@@ -2,14 +2,41 @@
   "name": "pognali-cards",
   "version": "1.0.0",
   "description": "Генератор карточек для маркетплейсов — Погнали РФ",
-  "type": "module",
+  "main": "main.js",
   "scripts": {
-    "start": "node src/index.js",
-    "template": "node tools/extract-template.mjs"
+    "start": "electron .",
+    "build": "electron-builder",
+    "logo": "node tools/подготовить-логотип.mjs"
   },
   "license": "ISC",
-  "dependencies": {
-    "@napi-rs/canvas": "^1.0.3",
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "sharp": "^0.35.3"
+  },
+  "build": {
+    "appId": "ru.pognali.cards",
+    "productName": "Карточки Погнали РФ",
+    "directories": {
+      "output": "СБОРКА"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "ui/**/*",
+      "шаблон/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Карточки Погнали РФ.exe"
+    },
+    "compression": "maximum"
   }
 }

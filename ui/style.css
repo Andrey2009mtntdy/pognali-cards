@@ -1,0 +1,174 @@
+/* Шрифты лежат рядом с приложением — интернет не нужен. */
+@font-face { font-family: 'MontM';  src: url('../шаблон/шрифты/Montserrat-Medium.ttf');     font-display: block; }
+@font-face { font-family: 'MontSB'; src: url('../шаблон/шрифты/Montserrat-SemiBold.ttf');   font-display: block; }
+@font-face { font-family: 'MontB';  src: url('../шаблон/шрифты/Montserrat-Bold.ttf');       font-display: block; }
+@font-face { font-family: 'MontEB'; src: url('../шаблон/шрифты/Montserrat-ExtraBold.ttf');  font-display: block; }
+@font-face { font-family: 'MontBk'; src: url('../шаблон/шрифты/Montserrat-Black.ttf');      font-display: block; }
+
+:root {
+  --bg: #15171c;
+  --bg2: #1c1f26;
+  --line: rgba(255,255,255,0.09);
+  --text: #e8eaee;
+  --dim: #8b93a1;
+  --accent: #f97316;
+  --ok: #22c55e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 'MontM', 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Шапка ── */
+.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-family: 'MontEB'; letter-spacing: .3px; }
+.brand-mark { color: var(--accent); font-size: 17px; }
+.top-actions { display: flex; gap: 9px; }
+
+.btn {
+  padding: 9px 15px; border-radius: 8px; border: 1px solid var(--line);
+  background: transparent; color: var(--text); cursor: pointer;
+  font: 12px 'MontB', sans-serif; letter-spacing: .4px;
+}
+.btn:hover:not(:disabled) { border-color: rgba(255,255,255,.28); background: rgba(255,255,255,.04); }
+.btn:disabled { opacity: .38; cursor: default; }
+.btn-primary { background: rgba(249,115,22,.14); border-color: rgba(249,115,22,.5); color: #ffb27a; }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #1a1005; }
+.btn-accent:hover:not(:disabled) { background: #ff8a3d; }
+
+/* ── Раскладка ── */
+.layout { flex: 1 1 auto; display: flex; min-height: 0; }
+.pane { overflow-y: auto; min-height: 0; }
+.pane-form { flex: 0 0 46%; padding: 16px; border-right: 1px solid var(--line); }
+.pane-preview { flex: 1 1 auto; padding: 16px 18px; background: #101216; }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 13px;
+}
+.card-title {
+  font: 11px 'MontEB', sans-serif; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 11px;
+}
+.hint { font-size: 12px; color: var(--dim); margin-bottom: 10px; }
+
+label { display: block; font-size: 11px; color: var(--dim); }
+input[type=text], input:not([type]), input[type=color] { margin-top: 4px; }
+input:not([type=checkbox]):not([type=color]) {
+  width: 100%; padding: 8px 10px; border-radius: 7px;
+  border: 1px solid var(--line); background: #14161b; color: var(--text);
+  font: 13px 'MontM', sans-serif; outline: none;
+}
+input:focus { border-color: rgba(249,115,22,.55); }
+input[type=color] {
+  width: 42px; height: 30px; padding: 2px; border: 1px solid var(--line);
+  border-radius: 6px; background: #14161b; cursor: pointer;
+}
+
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+.row { display: flex; align-items: flex-end; gap: 16px; margin-top: 11px; flex-wrap: wrap; }
+.color { display: flex; align-items: center; gap: 7px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer; }
+.check input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+.spec-row, .kit-row { display: grid; gap: 7px; margin-bottom: 7px; align-items: center; }
+.spec-row { grid-template-columns: 96px 1fr 74px 1fr; }
+.kit-row  { grid-template-columns: 22px 1fr 1fr; }
+.kit-num { font: 12px 'MontEB'; color: var(--accent); text-align: center; }
+select {
+  padding: 8px 6px; border-radius: 7px; border: 1px solid var(--line);
+  background: #14161b; color: var(--text); font: 12px 'MontM', sans-serif; outline: none;
+}
+
+/* ── Слоты и галерея ── */
+.slider-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--dim); margin: 4px 0 6px;
+}
+.slider-row input[type=range] { flex: 1 1 auto; accent-color: var(--accent); cursor: pointer; }
+.slider-row b { color: var(--text); font: 12px 'MontB'; min-width: 22px; text-align: right; }
+.hint.small { font-size: 11px; margin-bottom: 12px; }
+
+.slots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+.slot {
+  padding: 6px 10px; border-radius: 7px; border: 1px solid var(--line);
+  background: transparent; color: var(--dim); cursor: pointer;
+  font: 11px 'MontB', sans-serif;
+}
+.slot.filled { color: var(--text); border-color: rgba(34,197,94,.45); }
+.slot.active { background: var(--accent); border-color: var(--accent); color: #1a1005; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 7px; }
+.thumb {
+  aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; position: relative;
+}
+.thumb img { width: 100%; height: 100%; object-fit: contain; }
+.thumb.used { border-color: rgba(249,115,22,.6); }
+.thumb .tag {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.72); color: #fff; font-size: 9px; text-align: center;
+  padding: 2px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Превью ── */
+.preview-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font: 11px 'MontEB'; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 12px;
+}
+.dim { color: var(--dim); }
+.previews { display: flex; gap: 16px; align-items: flex-start; }
+.previews figure { margin: 0; flex: 1 1 0; min-width: 0; }
+.previews canvas {
+  width: 100%; height: auto; display: block;
+  border-radius: 10px; border: 1px solid var(--line); background: #000;
+}
+.previews figcaption { margin-top: 7px; font-size: 11px; color: var(--dim); text-align: center; }
+
+/* ── Тост и оверлей ── */
+.toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+  background: #23262e; border: 1px solid var(--line); border-radius: 9px;
+  padding: 11px 18px; font-size: 13px; opacity: 0; pointer-events: none;
+  transition: opacity .18s, transform .18s; max-width: 70vw;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok { border-color: rgba(34,197,94,.5); }
+.toast.err { border-color: rgba(239,68,68,.55); }
+
+.overlay {
+  position: fixed; inset: 0; background: rgba(10,11,14,.78);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.overlay.hidden { display: none; }
+.overlay-box { text-align: center; }
+.spinner {
+  width: 34px; height: 34px; margin: 0 auto 12px;
+  border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 5px; }
+::-webkit-scrollbar-track { background: transparent; }

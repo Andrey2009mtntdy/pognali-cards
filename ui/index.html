@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Карточки для маркетплейсов — Погнали РФ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="brand-mark">▲</span>
+    <span>Карточки для маркетплейсов</span>
+  </div>
+  <div class="top-actions">
+    <button id="btn-folder" class="btn btn-primary">Выбрать папку с фото</button>
+    <button id="btn-batch" class="btn">Пакет: все папки</button>
+    <button id="btn-save" class="btn btn-accent" disabled>Сохранить карточки</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ЛЕВАЯ КОЛОНКА: данные -->
+  <section class="pane pane-form">
+
+    <div class="card">
+      <div class="card-title">Модель</div>
+      <div id="folder-name" class="hint">Папка не выбрана</div>
+      <div class="grid-3">
+        <label>Бренд<input id="f-brand" placeholder="KUGOO"></label>
+        <label>Модель<input id="f-model" placeholder="WISH"></label>
+        <label>Версия<input id="f-version" placeholder="03"></label>
+      </div>
+      <div class="row">
+        <label class="color">Акцент<input type="color" id="f-accent" value="#f97316"></label>
+        <label class="check"><input type="checkbox" id="f-removebg" checked> Убирать фон у фото</label>
+        <label class="check"><input type="checkbox" id="f-corners" checked> Уголки в рамке</label>
+        <label class="check"><input type="checkbox" id="f-logo2"> Логотип на 2-й</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Характеристики — 4 плашки</div>
+      <div id="specs"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Комплектация — 8 блоков</div>
+      <div id="kit"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Фотографии</div>
+      <div class="hint">Выбери слот и кликни фото. Файлы с понятными именами (перед, зеркала, фара…) раскладываются сами.</div>
+      <div class="slider-row">
+        <span>Сила вырезания фона</span>
+        <input type="range" id="f-tol" min="14" max="70" step="2" value="38">
+        <b id="tol-val">38</b>
+      </div>
+      <div class="hint small">Больше — чище фон, но можно «съесть» тёмные детали. Меньше — останется светлый ободок.</div>
+      <div id="slots" class="slots"></div>
+      <div id="gallery" class="gallery"></div>
+    </div>
+
+  </section>
+
+  <!-- ПРАВАЯ КОЛОНКА: превью -->
+  <section class="pane pane-preview">
+    <div class="preview-head">
+      <span>Предпросмотр</span>
+      <span id="size-label" class="dim">1024 × 1280</span>
+    </div>
+    <div class="previews">
+      <figure>
+        <canvas id="c1"></canvas>
+        <figcaption>Главная</figcaption>
+      </figure>
+      <figure>
+        <canvas id="c2"></canvas>
+        <figcaption>Комплектация</figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<div id="overlay" class="overlay hidden">
+  <div class="overlay-box">
+    <div class="spinner"></div>
+    <div id="overlay-text">Работаю…</div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
