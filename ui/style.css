@@ -145,6 +145,35 @@ select {
 }
 .previews figcaption { margin-top: 7px; font-size: 11px; color: var(--dim); text-align: center; }
 
+/* ── Редактор кадрирования ── */
+.editor {
+  margin-top: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px 14px;
+}
+.editor-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.editor-title { font: 11px 'MontEB'; letter-spacing: 1.1px; text-transform: uppercase; color: var(--dim); }
+.editor-title b { color: var(--text); }
+.editor-tools { display: flex; align-items: center; gap: 9px; }
+.ed-hint { font-size: 11px; color: var(--dim); }
+.editor-tools input[type=range] { width: 150px; accent-color: var(--accent); cursor: pointer; }
+.editor-tools b { font: 11px 'MontB'; color: var(--text); min-width: 38px; text-align: right; }
+.btn-mini { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+
+#ed-canvas {
+  width: 100%; height: 300px; display: block;
+  border-radius: 9px; border: 1px solid var(--line);
+  background: #0d0f13; cursor: grab;
+}
+#ed-canvas.dragging { cursor: grabbing; }
+#ed-canvas.empty { cursor: default; }
+.ed-foot { margin-top: 8px; font-size: 11px; color: var(--dim); }
+
 /* ── Тост и оверлей ── */
 .toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);

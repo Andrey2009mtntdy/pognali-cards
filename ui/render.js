@@ -128,10 +128,11 @@ export function renderCard1(canvas, data, assets = {}) {
     ctx.restore();
   }
 
-  const box = drawContain(ctx, data.photos?.front, CARD1.photo);
+  const frontT = data.transforms?.front;
+  const box = drawContain(ctx, data.photos?.front, CARD1.photo, { transform: frontT });
   if (box) {
     contactShadow(ctx, box, P.dark ? 0.55 : 0.34);
-    drawContain(ctx, data.photos.front, CARD1.photo);
+    drawContain(ctx, data.photos.front, CARD1.photo, { transform: frontT });
   }
 
   fitText(ctx, data.brand || '', CARD1.brand, {
@@ -184,7 +185,8 @@ function drawKitGrid(ctx, data, P) {
     };
     const img = data.photos?.[`kit${i + 1}`];
     if (img) {
-      drawCoverPath(ctx, img, ph, () => chamferPath(ctx, ph.x, ph.y, ph.w, ph.h, 10, corners));
+      drawCoverPath(ctx, img, ph, () => chamferPath(ctx, ph.x, ph.y, ph.w, ph.h, 10, corners),
+        data.transforms?.[`kit${i + 1}`]);
     }
 
     // Крупный акцентный номер.
@@ -226,10 +228,11 @@ export function renderCard2(canvas, data, assets = {}) {
   if (P.dark) splitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
   else lightSplitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
 
-  const box = drawContain(ctx, data.photos?.rear, CARD2.photo);
+  const rearT = data.transforms?.rear;
+  const box = drawContain(ctx, data.photos?.rear, CARD2.photo, { transform: rearT });
   if (box) {
     contactShadow(ctx, box, P.dark ? 0.3 : 0.26);
-    drawContain(ctx, data.photos.rear, CARD2.photo);
+    drawContain(ctx, data.photos.rear, CARD2.photo, { transform: rearT });
   }
 
   // Верхние надписи всегда по светлому фону — держим их тёмными.

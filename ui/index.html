@@ -82,6 +82,24 @@
         <figcaption>Комплектация</figcaption>
       </figure>
     </div>
+
+    <!-- Кадрирование: крупно, чтобы не щуриться в мелкий блок на карточке -->
+    <section class="editor" id="editor">
+      <div class="editor-head">
+        <div class="editor-title">
+          Кадрирование · <b id="ed-slot">выбери фото</b>
+        </div>
+        <div class="editor-tools">
+          <span class="ed-hint">тяни мышью · колесо = масштаб</span>
+          <input type="range" id="ed-zoom" min="50" max="400" step="2" value="100" title="Масштаб">
+          <b id="ed-zoom-val">100%</b>
+          <button id="ed-fit" class="btn btn-mini">Вписать</button>
+          <button id="ed-reset" class="btn btn-mini">Сброс</button>
+        </div>
+      </div>
+      <canvas id="ed-canvas"></canvas>
+      <div class="ed-foot" id="ed-foot">Выбери слот в разделе «Фотографии» — фото откроется здесь крупно.</div>
+    </section>
   </section>
 </main>
 

@@ -92,6 +92,23 @@ export function kitRects() {
   return out;
 }
 
+// Рамка, в которую попадает фото конкретного слота, — нужна редактору кадрирования,
+// чтобы показывать кадр в тех же пропорциях, что на самой карточке.
+export function slotFrame(slotId) {
+  if (slotId === 'front') return { w: CARD1.photo.w, h: CARD1.photo.h, mode: 'contain' };
+  if (slotId === 'rear')  return { w: CARD2.photo.w, h: CARD2.photo.h, mode: 'contain' };
+
+  const idx = Number(String(slotId).replace('kit', '')) - 1;
+  const rects = kitRects();
+  const r = rects[idx];
+  if (!r) return { w: 200, h: 150, mode: 'cover' };
+  return {
+    w: r.w * KIT_BOX.photoFrac,
+    h: r.h - KIT_BOX.photoPad * 2,
+    mode: 'cover',
+  };
+}
+
 // Пресеты блоков комплектации — нейтральные формулировки из брифа.
 export const KIT_PRESETS = [
   { title: 'ЗЕРКАЛА',              note: 'заднего вида' },

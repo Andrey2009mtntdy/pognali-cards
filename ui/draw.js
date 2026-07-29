@@ -198,7 +198,32 @@ export function fitTwoTone(ctx, first, second, rect, opts = {}) {
 }
 
 // ── Изображения ──────────────────────────────────────────────────────────────
-export function drawContain(ctx, img, rect, { align = 'center', valign = 'middle' } = {}) {
+// Куда именно ляжет картинка в рамке с учётом ручной подгонки.
+// transform: { scale, dx, dy } — множитель и сдвиг в долях от размера рамки,
+// их задаёт пользователь в редакторе кадрирования.
+export function placement(img, rect, mode = 'cover', transform) {
+  if (!img) return null;
+  const t = { scale: 1, dx: 0, dy: 0, ...(transform || {}) };
+  const base = mode === 'cover'
+    ? Math.max(rect.w / img.width, rect.h / img.height)
+    : Math.min(rect.w / img.width, rect.h / img.height);
+  const s = base * (t.scale || 1);
+  const w = img.width * s;
+  const h = img.height * s;
+  return {
+    x: rect.x + (rect.w - w) / 2 + (t.dx || 0) * rect.w,
+    y: rect.y + (rect.h - h) / 2 + (t.dy || 0) * rect.h,
+    w, h,
+  };
+}
+
+export function drawContain(ctx, img, rect, { align = 'center', valign = 'middle', transform } = {}) {
+  // С ручной подгонкой выравнивание по краям не применяем — позицию задаёт пользователь.
+  if (img && transform && (transform.scale !== 1 || transform.dx || transform.dy)) {
+    const p = placement(img, rect, 'contain', transform);
+    ctx.drawImage(img, p.x, p.y, p.w, p.h);
+    return p;
+  }
   if (!img) return null;
   const scale = Math.min(rect.w / img.width, rect.h / img.height);
   const w = img.width * scale, h = img.height * scale;
@@ -212,14 +237,13 @@ export function drawContain(ctx, img, rect, { align = 'center', valign = 'middle
   return { x, y, w, h };
 }
 
-export function drawCoverPath(ctx, img, rect, pathFn) {
+export function drawCoverPath(ctx, img, rect, pathFn, transform) {
   if (!img) return;
   ctx.save();
   pathFn();
   ctx.clip();
-  const scale = Math.max(rect.w / img.width, rect.h / img.height);
-  const w = img.width * scale, h = img.height * scale;
-  ctx.drawImage(img, rect.x + (rect.w - w) / 2, rect.y + (rect.h - h) / 2, w, h);
+  const p = placement(img, rect, 'cover', transform);
+  ctx.drawImage(img, p.x, p.y, p.w, p.h);
   ctx.restore();
 }
 

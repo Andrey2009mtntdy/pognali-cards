@@ -51,6 +51,7 @@ export function parseData(text) {
   const fields = {};
   const specs = [];
   const kit = [];
+  const transforms = {};
   let section = null;
 
   for (const line of String(text).split(/\r?\n/)) {
@@ -80,6 +81,16 @@ export function parseData(text) {
     const specNum = key.match(/^характеристика\s*(\d+)$/);
     if (specNum) { specs[Number(specNum[1]) - 1] = parseSpecLine(value); continue; }
 
+    // «Кадр kit3: 1.20 0.05 -0.10» — ручная подгонка фото в слоте.
+    const frame = key.match(/^кадр\s+(\S+)$/);
+    if (frame) {
+      const [scale, dx, dy] = value.split(/\s+/).map(Number);
+      if ([scale, dx, dy].every(n => Number.isFinite(n))) {
+        transforms[frame[1]] = { scale, dx, dy };
+      }
+      continue;
+    }
+
     fields[key] = value;
   }
 
@@ -95,6 +106,7 @@ export function parseData(text) {
     logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || ''),
     specs: specs.filter(Boolean).slice(0, 4),
     kit: kit.slice(0, 8),
+    transforms,
   };
 }
 
@@ -118,6 +130,16 @@ export function stringifyData(d) {
   (d.kit || []).forEach((k, i) => {
     lines.push(`${i + 1}. ${k.title || ''}${k.note ? ` | ${k.note}` : ' |'}`);
   });
+
+  // Ручная подгонка кадров — чтобы при следующем открытии папки всё осталось как настроил.
+  const moved = Object.entries(d.transforms || {})
+    .filter(([, t]) => t && (t.scale !== 1 || t.dx || t.dy));
+  if (moved.length) {
+    lines.push('');
+    for (const [slot, t] of moved) {
+      lines.push(`Кадр ${slot}: ${t.scale.toFixed(3)} ${t.dx.toFixed(4)} ${t.dy.toFixed(4)}`);
+    }
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -125,6 +147,7 @@ export function emptyData() {
   return {
     brand: '', model: '', version: '',
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: true, tolerance: 38,
+    transforms: {},
     specs: SPEC_PRESETS.map(s => ({ ...s })),
     kit: KIT_PRESETS.map(k => ({ ...k })),
   };
