@@ -295,7 +295,7 @@ function hexGrid(ctx, x, y, w, h, size, color, alpha) {
 }
 
 // Косые световые полосы — «скорость» на фоне.
-function lightStreaks(ctx, x, y, w, h, accent, seed, density = 12) {
+function lightStreaks(ctx, x, y, w, h, accent, seed, density = 12, alphaScale = 1) {
   const rnd = mulberry32(seed);
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
@@ -311,11 +311,80 @@ function lightStreaks(ctx, x, y, w, h, accent, seed, density = 12) {
     g.addColorStop(0, 'rgba(0,0,0,0)');
     g.addColorStop(0.5, col);
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = warm ? 0.10 + rnd() * 0.30 : 0.05 + rnd() * 0.10;
+    ctx.globalAlpha = (warm ? 0.10 + rnd() * 0.30 : 0.05 + rnd() * 0.10) * alphaScale;
     ctx.fillStyle = g;
     ctx.fillRect(off, -len / 2, thick, len);
   }
   ctx.restore();
+}
+
+// Приглушает слишком светлый цвет, чтобы им можно было писать по белому.
+// Чистый жёлтый на белом не читается вообще, поэтому для текста берём затемнённый.
+export function readableOnLight(hex) {
+  const m = String(hex).replace('#', '');
+  const full = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+  let r = parseInt(full.slice(0, 2), 16);
+  let g = parseInt(full.slice(2, 4), 16);
+  let b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return hex;
+
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum <= 0.62) return hex;
+  const k = Math.max(0.42, 0.62 / lum);   // тянем к более тёмному, сохраняя оттенок
+  r = Math.round(r * k); g = Math.round(g * k); b = Math.round(b * k);
+  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Фон главной карточки в светлой теме: белый с лёгкой техно-текстурой.
+export function lightBackground(ctx, w, h, accent, seed) {
+  const g = ctx.createLinearGradient(0, 0, w * 0.35, h);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.55, '#fbfbfc');
+  g.addColorStop(1, '#f1f2f4');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  hexGrid(ctx, 0, 0, w, h, 46, '#9aa3b2', 0.10);
+  lightStreaks(ctx, w * 0.26, 0, w * 0.74, h * 0.86, accent, seed, 14, 0.60);
+
+  // Тёплое свечение за товаром.
+  const glow = ctx.createRadialGradient(w * 0.6, h * 0.46, 0, w * 0.6, h * 0.46, w * 0.58);
+  glow.addColorStop(0, hexToRgba(accent, 0.20));
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+
+  // Светлая «полка», чтобы товар стоял, а не парил.
+  const floor = ctx.createLinearGradient(0, h * 0.66, 0, h);
+  floor.addColorStop(0, 'rgba(255,255,255,0)');
+  floor.addColorStop(0.55, 'rgba(236,238,241,0.75)');
+  floor.addColorStop(1, 'rgba(226,229,234,0.95)');
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, h * 0.66, w, h * 0.34);
+}
+
+// Фон карточки комплектации в светлой теме: белый верх, кремовый низ под блоки.
+export function lightSplitBackground(ctx, w, h, accent, seed, splitY) {
+  const top = ctx.createLinearGradient(0, 0, w, splitY);
+  top.addColorStop(0, '#ffffff');
+  top.addColorStop(0.6, '#fafbfc');
+  top.addColorStop(1, '#f2f3f5');
+  ctx.fillStyle = top;
+  ctx.fillRect(0, 0, w, splitY);
+
+  hexGrid(ctx, 0, 0, w, splitY, 40, '#9aa3b2', 0.11);
+  lightStreaks(ctx, w * 0.30, 0, w * 0.70, splitY, accent, seed, 10, 0.55);
+
+  const bottom = ctx.createLinearGradient(0, splitY, 0, h);
+  bottom.addColorStop(0, '#fffdf5');
+  bottom.addColorStop(1, '#f7f4ea');
+  ctx.fillStyle = bottom;
+  ctx.fillRect(0, splitY, w, h - splitY);
+
+  hexGrid(ctx, 0, splitY, w, h - splitY, 44, '#c9ab5a', 0.10);
+
+  ctx.fillStyle = hexToRgba(accent, 0.95);
+  ctx.fillRect(0, splitY - 2, w, 4);
 }
 
 // Фон главной карточки: тёмный стальной градиент со световыми полосами.

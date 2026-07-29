@@ -145,6 +145,7 @@ function syncFormFromData() {
   $('f-removebg').checked = !!data.removeBg;
   $('f-corners').checked = data.corners !== false;
   $('f-logo2').checked = !!data.logoOnSecond;
+  $('f-dark').checked = data.theme === 'dark';
   $('f-tol').value = data.tolerance ?? 38;
   $('tol-val').textContent = data.tolerance ?? 38;
   buildSpecs(); buildKit(); buildSlots(); buildGallery();
@@ -287,6 +288,11 @@ bindField('f-version', 'version', v => v.toUpperCase());
 bindField('f-accent', 'accent');
 bindField('f-corners', 'corners');
 bindField('f-logo2', 'logoOnSecond');
+
+$('f-dark').addEventListener('change', (e) => {
+  data.theme = e.target.checked ? 'dark' : 'light';
+  scheduleRedraw();
+});
 
 $('f-removebg').addEventListener('change', async (e) => {
   data.removeBg = e.target.checked;

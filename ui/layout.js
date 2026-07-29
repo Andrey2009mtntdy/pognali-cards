@@ -5,10 +5,20 @@
 export const CARD_W = 1024;
 export const CARD_H = 1280;
 
-export const ORANGE = '#f97316';
+// Палитра сайта «Погнали РФ».
+// Чистый #FFDD00 отлично работает заливкой, но как текст на белом не читается —
+// для надписей и обводок берём приглушённый и золотистый.
+export const YELLOW = '#FFDD00';        // основной жёлтый — заливки, полосы
+export const YELLOW_GLOW = '#FFD600';   // свечение
+export const GOLD = '#F5A623';          // золотисто-жёлтый
+export const YELLOW_DEEP = '#E6B800';   // приглушённый — текст и обводки
+export const CREAM = '#FEF3C7';         // бледно-жёлтая подложка
+
+export const ORANGE = YELLOW;           // акцент по умолчанию
+export const INK = '#111111';           // основной текст
+export const DIM = '#6b7280';           // подписи
 export const WHITE = '#ffffff';
-export const DIM = '#98a2b3';
-export const PANEL = 'rgba(16,18,24,0.86)';
+export const PANEL = 'rgba(255,255,255,0.94)';
 
 // ── Карточка №1 — главная ────────────────────────────────────────────────────
 export const CARD1 = {

@@ -90,6 +90,7 @@ export function parseData(text) {
     model: (fields['модель'] || '').toUpperCase(),
     version: (fields['версия'] || '').toUpperCase(),
     accent: /^#[0-9a-f]{3,8}$/i.test(accentRaw) ? accentRaw : (accentRaw ? colorByName(accentRaw) : ORANGE),
+    theme: /^(да|yes|1|true|тёмн|темн)/i.test(fields['тёмная тема'] || fields['темная тема'] || '') ? 'dark' : 'light',
     removeBg: /^(да|yes|1|true)$/i.test(fields['удалять фон'] || 'да'),
     logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || ''),
     specs: specs.filter(Boolean).slice(0, 4),
@@ -104,6 +105,7 @@ export function stringifyData(d) {
     `Модель: ${d.model || ''}`,
     `Версия: ${d.version || ''}`,
     `Цвет оформления: ${d.accent || ORANGE}`,
+    `Тёмная тема: ${d.theme === 'dark' ? 'да' : 'нет'}`,
     `Удалять фон: ${d.removeBg ? 'да' : 'нет'}`,
     `Логотип на второй: ${d.logoOnSecond ? 'да' : 'нет'}`,
     '',
@@ -122,7 +124,7 @@ export function stringifyData(d) {
 export function emptyData() {
   return {
     brand: '', model: '', version: '',
-    accent: ORANGE, removeBg: true, logoOnSecond: false, corners: true, tolerance: 38,
+    accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: true, tolerance: 38,
     specs: SPEC_PRESETS.map(s => ({ ...s })),
     kit: KIT_PRESETS.map(k => ({ ...k })),
   };
