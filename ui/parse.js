@@ -1,13 +1,13 @@
 // Чтение и запись файла «данные.txt» — обычный текст «ключ: значение».
 
-import { ORANGE, KIT_PRESETS, SPEC_PRESETS } from './layout.js';
+import { ORANGE, KIT_PRESETS, SPEC_PRESETS, BATTERY_PRESET, FOOTER_PRESETS } from './layout.js';
 
 // По единице измерения и подписи понимаем, какую иконку ставить.
 function guessIcon(unit, label, value) {
   const s = `${unit} ${label} ${value}`.toLowerCase();
   if (/км\/ч|скорост/.test(s)) return 'gauge';
   if (/\bкм\b|пробег|запас хода/.test(s)) return 'route';
-  if (/\bw\b|вт|ватт|мощност/.test(s)) return 'power';
+  if (/\bw\b|вт|ватт|мощност/.test(s)) return 'motor';
   if (/ah|ач|ёмкость|емкость|li-ion|lifepo|аккумулятор|батаре|\bv\b/.test(s)) return 'battery';
   if (/кг|нагрузк|вес/.test(s)) return 'weight';
   if (/\bч\b|час|зарядк/.test(s)) return 'clock';
@@ -15,10 +15,13 @@ function guessIcon(unit, label, value) {
   return 'power';
 }
 
-// «70 км» → { value: '70', unit: 'км' };  «72 V / 36 Ah» → оставляем целиком
+// «70 км» → { value: '70', unit: 'км' };  «72 V / 36 Ah» → оставляем целиком.
+// Косая черта сама по себе не делает значение составным: в «100 км/ч» она
+// внутри единицы измерения. Признак составного — два числа в строке.
 function splitValue(raw) {
   const s = String(raw).trim();
-  if (/[/]/.test(s)) return { value: s, unit: '' };  // составное значение не режем
+  const numbers = s.match(/\d+(?:[.,]\d+)?/g) || [];
+  if (s.includes('/') && numbers.length >= 2) return { value: s, unit: '' };
   const m = s.match(/^([\d.,]+)\s*(.*)$/);
   return m ? { value: m[1], unit: m[2].trim() } : { value: s, unit: '' };
 }
@@ -81,12 +84,13 @@ export function parseData(text) {
     const specNum = key.match(/^характеристика\s*(\d+)$/);
     if (specNum) { specs[Number(specNum[1]) - 1] = parseSpecLine(value); continue; }
 
-    // «Кадр kit3: 1.20 0.05 -0.10» — ручная подгонка фото в слоте.
+    // «Кадр kit3: 1.20 0.05 -0.10 -3» — масштаб, сдвиг и поворот в градусах.
+    // Четвёртого числа может не быть: файлы, записанные до появления поворота.
     const frame = key.match(/^кадр\s+(\S+)$/);
     if (frame) {
-      const [scale, dx, dy] = value.split(/\s+/).map(Number);
+      const [scale, dx, dy, rot] = value.split(/\s+/).map(Number);
       if ([scale, dx, dy].every(n => Number.isFinite(n))) {
-        transforms[frame[1]] = { scale, dx, dy };
+        transforms[frame[1]] = { scale, dx, dy, rot: Number.isFinite(rot) ? rot : 0 };
       }
       continue;
     }
@@ -96,7 +100,34 @@ export function parseData(text) {
 
   const accentRaw = fields['цвет оформления'] || fields['акцент'] || '';
 
-  return {
+  // «Батарея: LI-ION | 60В / 27Ач». Тип не обязателен — тогда это просто ёмкость.
+  const battery = { ...BATTERY_PRESET };
+  if (fields['батарея'] || fields['аккумулятор']) {
+    const [a, b] = String(fields['батарея'] || fields['аккумулятор']).split('|').map(s => s.trim());
+    if (b) { battery.type = a.toUpperCase(); battery.value = b; }
+    else { battery.type = ''; battery.value = a; }
+  }
+
+  const clean = specs.filter(Boolean);
+
+  // Файлы прежнего формата держали батарею среди характеристик — переносим её
+  // в отдельный блок, иначе она пропадёт: плашек на карточке теперь три.
+  if (!fields['батарея'] && !fields['аккумулятор']) {
+    const i = clean.findIndex(s => s.icon === 'battery');
+    if (i >= 0) {
+      const [moved] = clean.splice(i, 1);
+      battery.type = (moved.label || 'LI-ION').toUpperCase();
+      battery.value = [moved.value, moved.unit].filter(Boolean).join(' ');
+    }
+  }
+
+  const footer = FOOTER_PRESETS.map(f => ({ ...f }));
+  const FOOTER_KEYS = ['гарантия', 'маркировка', 'влагозащита'];
+  FOOTER_KEYS.forEach((key, i) => {
+    if (fields[key]) footer[i].value = fields[key];
+  });
+
+  const out = {
     brand: (fields['бренд'] || '').toUpperCase(),
     model: (fields['модель'] || '').toUpperCase(),
     version: (fields['версия'] || '').toUpperCase(),
@@ -104,10 +135,21 @@ export function parseData(text) {
     theme: /^(да|yes|1|true|тёмн|темн)/i.test(fields['тёмная тема'] || fields['темная тема'] || '') ? 'dark' : 'light',
     removeBg: /^(да|yes|1|true)$/i.test(fields['удалять фон'] || 'да'),
     logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || ''),
-    specs: specs.filter(Boolean).slice(0, 4),
+    corners: /^(да|yes|1|true)$/i.test(fields['уголки'] || ''),
+    battery,
+    footer,
+    specs: clean.slice(0, 3),
     kit: kit.slice(0, 8),
     transforms,
   };
+
+  // Подложка — общая настройка оформления, а не свойство модели. Если строки
+  // в файле нет, ключ не возвращаем вовсе: иначе выбор модели из каталога
+  // (где про фон ничего не сказано) сбрасывал бы выбранную подложку.
+  if ('фон' in fields) out.background = fields['фон'];
+  if ('красить фон' in fields) out.tintBg = /^(да|yes|1|true)$/i.test(fields['красить фон']);
+
+  return out;
 }
 
 // Обратная сборка — чтобы кнопка «сохранить данные» писала файл в том же формате.
@@ -117,11 +159,23 @@ export function stringifyData(d) {
     `Модель: ${d.model || ''}`,
     `Версия: ${d.version || ''}`,
     `Цвет оформления: ${d.accent || ORANGE}`,
+    `Фон: ${d.background || ''}`,
+    `Красить фон: ${d.tintBg ? 'да' : 'нет'}`,
     `Тёмная тема: ${d.theme === 'dark' ? 'да' : 'нет'}`,
     `Удалять фон: ${d.removeBg ? 'да' : 'нет'}`,
     `Логотип на второй: ${d.logoOnSecond ? 'да' : 'нет'}`,
+    `Уголки: ${d.corners ? 'да' : 'нет'}`,
     '',
   ];
+
+  const b = d.battery || {};
+  lines.push(`Батарея: ${[b.type, b.value].filter(Boolean).join(' | ')}`);
+  (d.footer || []).forEach((f, i) => {
+    const key = ['Гарантия', 'Маркировка', 'Влагозащита'][i];
+    if (key) lines.push(`${key}: ${f.value || ''}`);
+  });
+  lines.push('');
+
   (d.specs || []).forEach((s, i) => {
     const v = [s.value, s.unit].filter(Boolean).join(' ');
     lines.push(`Характеристика ${i + 1}: ${v}${s.label ? ` | ${s.label}` : ''}`);
@@ -133,22 +187,51 @@ export function stringifyData(d) {
 
   // Ручная подгонка кадров — чтобы при следующем открытии папки всё осталось как настроил.
   const moved = Object.entries(d.transforms || {})
-    .filter(([, t]) => t && (t.scale !== 1 || t.dx || t.dy));
+    .filter(([, t]) => t && (t.scale !== 1 || t.dx || t.dy || t.rot));
   if (moved.length) {
     lines.push('');
     for (const [slot, t] of moved) {
-      lines.push(`Кадр ${slot}: ${t.scale.toFixed(3)} ${t.dx.toFixed(4)} ${t.dy.toFixed(4)}`);
+      lines.push(`Кадр ${slot}: ${t.scale.toFixed(3)} ${t.dx.toFixed(4)} ${t.dy.toFixed(4)} ${(t.rot || 0).toFixed(1)}`);
     }
   }
   return lines.join('\n') + '\n';
 }
 
+// Каталог — один файл со всеми моделями. Модели разделены заголовком
+// «=== Название ===» или «[Название]», внутри — тот же формат, что и в
+// данные.txt, поэтому карточку модели можно просто скопировать сюда.
+export function parseCatalog(text) {
+  const items = [];
+  let title = null;
+  let buf = [];
+
+  const flush = () => {
+    if (title === null && !buf.some(l => l.includes(':'))) return;
+    const data = parseData(buf.join('\n'));
+    const auto = [data.brand, data.model, data.version].filter(Boolean).join(' ');
+    const name = (title || auto).trim();
+    if (name) items.push({ title: name, data });
+  };
+
+  for (const line of String(text).split(/\r?\n/)) {
+    const t = line.trim();
+    const head = t.match(/^={2,}\s*(.+?)\s*={2,}$/) || t.match(/^\[\s*(.+?)\s*\]$/);
+    if (head) { flush(); title = head[1]; buf = []; continue; }
+    buf.push(line);
+  }
+  flush();
+  return items;
+}
+
 export function emptyData() {
   return {
     brand: '', model: '', version: '',
-    accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: true, tolerance: 38,
+    accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: false, tolerance: 38,
+    background: '', tintBg: true,
     transforms: {},
+    battery: { ...BATTERY_PRESET },
     specs: SPEC_PRESETS.map(s => ({ ...s })),
+    footer: FOOTER_PRESETS.map(f => ({ ...f })),
     kit: KIT_PRESETS.map(k => ({ ...k })),
   };
 }

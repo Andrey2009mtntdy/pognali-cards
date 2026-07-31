@@ -55,8 +55,8 @@ body {
 /* ── Раскладка ── */
 .layout { flex: 1 1 auto; display: flex; min-height: 0; }
 .pane { overflow-y: auto; min-height: 0; }
-.pane-form { flex: 0 0 46%; padding: 16px; border-right: 1px solid var(--line); }
-.pane-preview { flex: 1 1 auto; padding: 16px 18px; background: #101216; }
+.pane-form { flex: 1 1 42%; min-width: 380px; padding: 16px; border-right: 1px solid var(--line); }
+.pane-preview { flex: 1 1 58%; min-width: 420px; padding: 16px 18px; background: #101216; }
 
 .card {
   background: var(--bg2);
@@ -98,6 +98,49 @@ select {
   padding: 8px 6px; border-radius: 7px; border: 1px solid var(--line);
   background: #14161b; color: var(--text); font: 12px 'MontM', sans-serif; outline: none;
 }
+label > select { width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 13px; }
+
+/* ── Список моделей: выдвижная панель ── */
+.icon-btn {
+  width: 32px; height: 32px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid var(--line);
+  background: transparent; color: var(--text); cursor: pointer; font-size: 15px;
+}
+.icon-btn:hover { border-color: rgba(255,255,255,.28); background: rgba(255,255,255,.05); }
+
+.top-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.chip {
+  padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+  background: rgba(249,115,22,.14); border: 1px solid rgba(249,115,22,.45);
+  color: #ffb27a; font: 11px 'MontB', sans-serif; letter-spacing: .3px;
+}
+.hidden { display: none !important; }
+
+.pane-models {
+  flex: 0 0 262px;
+  display: flex; flex-direction: column; padding: 14px;
+  background: var(--bg2); border-right: 1px solid var(--line);
+  overflow: hidden;                 /* прокручивается сам список, не колонка */
+}
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  font: 11px 'MontEB', sans-serif; letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim);
+}
+.drawer-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.drawer-foot .hint { margin: 8px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#catalog-search { margin-bottom: 9px; }
+
+.catalog-list { flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 0; }
+.catalog-item {
+  text-align: left; padding: 8px 11px; border-radius: 7px;
+  border: 1px solid var(--line); background: #14161b; color: var(--text);
+  font: 12px 'MontB', sans-serif; cursor: pointer;
+}
+.catalog-item:hover { border-color: rgba(249,115,22,.5); background: rgba(249,115,22,.08); }
+.catalog-item.active { border-color: var(--accent); color: #ffb27a; background: rgba(249,115,22,.14); }
+.catalog-item .sub { display: block; font: 11px 'MontM', sans-serif; color: var(--dim); margin-top: 2px; }
+.catalog-empty { font-size: 12px; color: var(--dim); padding: 6px 2px; }
 
 /* ── Слоты и галерея ── */
 .slider-row {
@@ -159,9 +202,9 @@ select {
 }
 .editor-title { font: 11px 'MontEB'; letter-spacing: 1.1px; text-transform: uppercase; color: var(--dim); }
 .editor-title b { color: var(--text); }
-.editor-tools { display: flex; align-items: center; gap: 9px; }
+.editor-tools { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
 .ed-hint { font-size: 11px; color: var(--dim); }
-.editor-tools input[type=range] { width: 150px; accent-color: var(--accent); cursor: pointer; }
+.editor-tools input[type=range] { width: 104px; accent-color: var(--accent); cursor: pointer; }
 .editor-tools b { font: 11px 'MontB'; color: var(--text); min-width: 38px; text-align: right; }
 .btn-mini { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
 

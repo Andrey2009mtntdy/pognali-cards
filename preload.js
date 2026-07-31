@@ -11,4 +11,12 @@ contextBridge.exposeInMainWorld('api', {
   saveCards:        (payload)     => ipcRenderer.invoke('save-cards', payload),
   openFolder:       (dir)         => ipcRenderer.invoke('open-folder', dir),
   listModelFolders: (root)        => ipcRenderer.invoke('list-model-folders', root),
+  listBackgrounds:  ()            => ipcRenderer.invoke('list-backgrounds'),
+  addBackground:    ()            => ipcRenderer.invoke('add-background'),
+  openBackgrounds:  ()            => ipcRenderer.invoke('open-backgrounds-folder'),
+  chooseCatalog:    ()            => ipcRenderer.invoke('choose-catalog'),
+  loadCatalog:      ()            => ipcRenderer.invoke('load-catalog'),
+
+  // Команды из верхнего меню приложения.
+  onMenu: (cb) => ipcRenderer.on('menu-action', (_e, action) => cb(action)),
 });

@@ -1,0 +1,114 @@
+# Сборка программы под Windows и macOS и выкладка в Releases.
+#
+# Запускается сама, когда в репозиторий приходит тег вида v1.0.0:
+#     git tag v1.0.0 && git push origin v1.0.0
+# Либо вручную — вкладка Actions, кнопка «Run workflow».
+#
+# Собирать macOS-версию можно только на macOS, поэтому обе платформы идут
+# параллельно на своих машинах GitHub, а готовые файлы собирает в релиз
+# третья задача. Так две сборки не дерутся за один и тот же релиз.
+
+name: Сборка и релиз
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Сборка ${{ matrix.title }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            title: Windows
+            pattern: СБОРКА/*.exe
+          - os: macos-latest
+            title: macOS
+            pattern: СБОРКА/*.dmg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Установить зависимости
+        run: npm ci
+
+      # Движок Electron ставится postinstall-скриптом. Новый npm блокирует такие
+      # скрипты, разрешение лежит в package.json (allowScripts), но если оно не
+      # сработало — доводим руками, иначе сборка упадёт без внятной причины.
+      - name: Проверить движок Electron
+        shell: bash
+        run: |
+          if [ ! -e node_modules/electron/path.txt ]; then
+            echo "движок не скачался postinstall-скриптом, ставим вручную"
+            node node_modules/electron/install.js
+          fi
+
+      - name: Собрать
+        run: npx electron-builder --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.title }}
+          path: ${{ matrix.pattern }}
+          if-no-files-found: error
+
+  release:
+    name: Выложить релиз
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: готово
+          merge-multiple: true
+
+      - name: Создать релиз
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.run_number) }}
+        run: |
+          ls -lh готово
+          cat > notes.md <<'EOF'
+          Генератор карточек для маркетплейсов «Погнали РФ».
+
+          ## Что скачивать
+
+          | Система | Файл |
+          |---|---|
+          | Windows | `Pognali-Cards-...-windows.exe` |
+          | Mac на Apple Silicon (M1–M4) | `Pognali-Cards-...-mac-arm64.dmg` |
+          | Mac на Intel | `Pognali-Cards-...-mac-x64.dmg` |
+
+          ## Установка
+
+          **Windows** — скачай exe и запусти, устанавливать ничего не нужно.
+          Если появится синее окно «Windows защитила ваш компьютер», нажми
+          «Подробнее» → «Выполнить в любом случае»: это обычное предупреждение
+          для программ без платной цифровой подписи.
+
+          **macOS** — открой dmg и перетащи программу в «Программы». При первом
+          запуске macOS скажет, что приложение повреждено или что разработчик
+          не проверен — подписи у нас нет. Лечится одной командой в Терминале:
+
+          ```
+          xattr -cr "/Applications/Карточки Погнали РФ.app"
+          ```
+
+          После этого программа открывается обычным двойным щелчком.
+          EOF
+          gh release create "$TAG" готово/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Карточки Погнали РФ $TAG" \
+            --notes-file notes.md

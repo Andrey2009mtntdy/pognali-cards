@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "icon": "node tools/сделать-иконку.mjs",
     "logo": "node tools/подготовить-логотип.mjs"
   },
   "license": "ISC",
@@ -18,13 +19,16 @@
     "appId": "ru.pognali.cards",
     "productName": "Карточки Погнали РФ",
     "directories": {
-      "output": "СБОРКА"
+      "output": "СБОРКА",
+      "buildResources": "build"
     },
     "files": [
       "main.js",
       "preload.js",
       "ui/**/*",
-      "шаблон/**/*"
+      "шаблон/**/*",
+      "модели/каталог.txt",
+      "ЧИТАТЬ МЕНЯ.txt"
     ],
     "win": {
       "target": [
@@ -32,11 +36,29 @@
           "target": "portable",
           "arch": ["x64"]
         }
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "portable": {
-      "artifactName": "Карточки Погнали РФ.exe"
+      "artifactName": "Pognali-Cards-${version}-windows.exe"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.png",
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "Pognali-Cards-${version}-mac-${arch}.dmg"
     },
     "compression": "maximum"
+  },
+  "allowScripts": {
+    "electron@43.2.0": true
   }
 }

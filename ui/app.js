@@ -2,11 +2,17 @@
 
 import { renderCard1, renderCard2, canvasToDataUrl } from './render.js';
 import { assignPhotos } from './photos.js';
-import { parseData, stringifyData, emptyData } from './parse.js';
-import { PHOTO_SLOTS, CARD_W, CARD_H, slotFrame } from './layout.js';
-import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement } from './draw.js';
+import { parseData, stringifyData, emptyData, parseCatalog } from './parse.js';
+import { PHOTO_SLOTS, CARD_W, CARD_H, ORANGE, slotFrame } from './layout.js';
+import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement, drawPlaced, recolorAccent } from './draw.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Поля нижней ленты: порядок совпадает с колонками на карточке.
+const FOOTER_FIELDS = [['f-warranty'], ['f-marking'], ['f-ip']];
+
+// Кадр без правок: масштаб 1, без сдвига и поворота.
+const FLAT = { scale: 1, dx: 0, dy: 0, rot: 0 };
 
 let data = emptyData();
 let files = [];            // [{ name, base, dataUrl }]
@@ -16,6 +22,10 @@ let activeSlot = 'front';
 let folder = null;
 let logo = null;
 let redrawTimer = null;
+let backgrounds = [];      // [{ name, image }] — подложки из папки «фоны»
+let tinted = { key: null, canvas: null };   // перекрашенная подложка, чтобы не считать её заново
+let catalog = [];          // [{ title, data }] — все модели из файла каталога
+let catalogPick = null;    // название выбранной модели, для подсветки в списке
 
 // ── Утилиты интерфейса ───────────────────────────────────────────────────────
 function toast(text, kind = '') {
@@ -89,6 +99,95 @@ function buildKit() {
   });
 }
 
+// ── Каталог моделей ──────────────────────────────────────────────────────────
+// Выбор модели заполняет все текстовые поля разом. Фотографии и их подгонку
+// не трогаем: человек обычно сначала открывает папку с фото, а уже потом
+// выбирает модель — обнулять его работу здесь было бы обидно.
+function buildCatalog() {
+  const box = $('catalog-list');
+  const query = $('catalog-search').value.trim().toLowerCase();
+  box.innerHTML = '';
+
+  if (!catalog.length) {
+    box.innerHTML = '<div class="catalog-empty">Каталог не загружен. Нажми «Загрузить каталог» и укажи txt-файл со списком моделей.</div>';
+    return;
+  }
+
+  const shown = query
+    ? catalog.filter(it => it.title.toLowerCase().includes(query))
+    : catalog;
+
+  if (!shown.length) {
+    box.innerHTML = '<div class="catalog-empty">Ничего не найдено.</div>';
+    return;
+  }
+
+  shown.forEach(item => {
+    const b = document.createElement('button');
+    b.className = 'catalog-item' + (catalogPick === item.title ? ' active' : '');
+    b.innerHTML = '';
+    b.append(item.title);
+
+    const sub = [item.data.battery?.value, item.data.specs?.[0]?.value && `${item.data.specs[0].value} ${item.data.specs[0].unit || ''}`.trim()]
+      .filter(Boolean).join(' · ');
+    if (sub) {
+      const s = document.createElement('span');
+      s.className = 'sub';
+      s.textContent = sub;
+      b.append(s);
+    }
+
+    b.onclick = () => pickCatalogItem(item);
+    box.append(b);
+  });
+}
+
+function pickCatalogItem(item) {
+  catalogPick = item.title;
+  data = { ...data, ...item.data, transforms: data.transforms, tolerance: data.tolerance };
+  syncFormFromData();
+  buildCatalog();          // подсветить выбранный пункт
+  redraw();
+  $('current-model').textContent = item.title;
+  $('current-model').classList.remove('hidden');
+  toast(`Модель: ${item.title}`, 'ok');
+}
+
+// ── Колонка со списком моделей ───────────────────────────────────────────────
+// Не всплывает поверх окна, а живёт в раскладке слева: свернул — остальные
+// колонки раздвинулись, развернул — сжались обратно.
+function showDrawer(on) {
+  $('drawer').classList.toggle('hidden', !on);
+}
+
+function drawerOpen() {
+  return !$('drawer').classList.contains('hidden');
+}
+
+// «1 модель», «3 модели», «12 моделей»
+function modelsWord(n) {
+  const tens = n % 100;
+  const ones = n % 10;
+  if (tens >= 11 && tens <= 14) return 'моделей';
+  if (ones === 1) return 'модель';
+  if (ones >= 2 && ones <= 4) return 'модели';
+  return 'моделей';
+}
+
+function applyCatalogText(text, sourcePath) {
+  const items = parseCatalog(text);
+  if (!items.length) {
+    toast('В файле не нашлось ни одной модели', 'err');
+    return false;
+  }
+  catalog = items;
+  catalogPick = null;
+  $('catalog-name').textContent = `${items.length} ${modelsWord(items.length)}`;
+  $('catalog-name').title = sourcePath || '';
+  buildCatalog();
+  return true;
+}
+
 function buildSlots() {
   const box = $('slots');
   box.innerHTML = '';
@@ -133,7 +232,7 @@ async function putInSlot(file, slot) {
   slotOfFile[file.name] = slot;
 
   // Новое фото в слоте — старая подгонка к нему не относится.
-  if (data.transforms) data.transforms[slot] = { scale: 1, dx: 0, dy: 0 };
+  if (data.transforms) data.transforms[slot] = { ...FLAT };
 
   buildSlots(); buildGallery();
   busy(false);
@@ -141,13 +240,51 @@ async function putInSlot(file, slot) {
   scheduleRedraw();
 }
 
+// Читает папку «фоны» заново — после запуска и после добавления своих файлов.
+async function reloadBackgrounds() {
+  const files = await window.api.listBackgrounds();
+  backgrounds = (await Promise.all(files.map(async f => ({
+    name: f.name,
+    image: await loadImage(f.dataUrl),
+  })))).filter(b => b.image);
+  tinted = { key: null, canvas: null };   // кэш перекраски относится к прежним файлам
+}
+
+// Список подложек: «рисованный фон» плюс всё, что нашлось в папке «фоны».
+function buildBackgrounds() {
+  const sel = $('f-background');
+  sel.innerHTML = '';
+
+  const add = (value, text) => {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = text;
+    sel.append(o);
+  };
+
+  add('', 'Рисованный (без картинки)');
+  backgrounds.forEach(b => add(b.name, b.name.replace(/\.[^.]+$/, '')));
+
+  // Файл из данные.txt мог не найтись — тогда честно показываем это,
+  // а не молча подставляем другую подложку.
+  if (data.background && !backgrounds.some(b => b.name === data.background)) {
+    add(data.background, `${data.background} — файл не найден`);
+  }
+  sel.value = data.background || '';
+}
+
 function syncFormFromData() {
   $('f-brand').value = data.brand || '';
   $('f-model').value = data.model || '';
   $('f-version').value = data.version || '';
-  $('f-accent').value = data.accent || '#f97316';
+  $('f-batt-type').value = data.battery?.type || '';
+  $('f-batt-value').value = data.battery?.value || '';
+  FOOTER_FIELDS.forEach(([id], i) => { $(id).value = data.footer?.[i]?.value || ''; });
+  $('f-accent').value = data.accent || ORANGE;
+  $('f-tintbg').checked = !!data.tintBg;
   $('f-removebg').checked = !!data.removeBg;
-  $('f-corners').checked = data.corners !== false;
+  buildBackgrounds();
+  $('f-corners').checked = !!data.corners;
   $('f-logo2').checked = !!data.logoOnSecond;
   $('f-dark').checked = data.theme === 'dark';
   $('f-tol').value = data.tolerance ?? 38;
@@ -164,8 +301,10 @@ const ed = {
 
 function transformOf(slot) {
   if (!data.transforms) data.transforms = {};
-  if (!data.transforms[slot]) data.transforms[slot] = { scale: 1, dx: 0, dy: 0 };
-  return data.transforms[slot];
+  if (!data.transforms[slot]) data.transforms[slot] = { ...FLAT };
+  const t = data.transforms[slot];
+  if (t.rot === undefined) t.rot = 0;   // подгонки из старых данные.txt поворота не знали
+  return t;
 }
 
 function openEditor(slot) {
@@ -173,6 +312,8 @@ function openEditor(slot) {
   const t = transformOf(slot);
   $('ed-zoom').value = Math.round(t.scale * 100);
   $('ed-zoom-val').textContent = `${Math.round(t.scale * 100)}%`;
+  $('ed-rot').value = Math.round(t.rot);
+  $('ed-rot-val').textContent = `${Math.round(t.rot)}°`;
   const label = PHOTO_SLOTS.find(s => s.id === slot)?.label || slot;
   $('ed-slot').textContent = label;
   drawEditor();
@@ -218,11 +359,12 @@ function drawEditor() {
   const frame = { x: (cssW - fw) / 2, y: (cssH - fh) / 2, w: fw, h: fh };
   ed.frame = frame;
 
-  const p = placement(img, frame, slot.mode, transformOf(activeSlot));
+  const t = transformOf(activeSlot);
+  const p = placement(img, frame, slot.mode, t);
 
   // Всё фото приглушённо — видно, что осталось за кадром.
   ctx.globalAlpha = 0.3;
-  ctx.drawImage(img, p.x, p.y, p.w, p.h);
+  drawPlaced(ctx, img, p, t.rot);
   ctx.globalAlpha = 1;
 
   // Внутри кадра — в полную силу.
@@ -234,7 +376,7 @@ function drawEditor() {
     ctx.fillStyle = data.theme === 'dark' ? '#20242c' : '#ffffff';
     ctx.fillRect(frame.x, frame.y, frame.w, frame.h);
   }
-  ctx.drawImage(img, p.x, p.y, p.w, p.h);
+  drawPlaced(ctx, img, p, t.rot);
   ctx.restore();
 
   // Рамка и уголки.
@@ -254,6 +396,17 @@ function drawEditor() {
     ctx.lineTo(x, y + sy * L);
     ctx.stroke();
   }
+}
+
+// Поворот задаётся из двух мест — ползунка и кнопки «90°», — поэтому и
+// применение, и синхронизация подписи собраны здесь.
+function setRotation(deg) {
+  const t = transformOf(activeSlot);
+  t.rot = deg;
+  $('ed-rot').value = Math.round(deg);
+  $('ed-rot-val').textContent = `${Math.round(deg)}°`;
+  drawEditor();
+  scheduleRedraw();
 }
 
 function setupEditor() {
@@ -304,21 +457,44 @@ function setupEditor() {
     scheduleRedraw();
   });
 
+  $('ed-rot').addEventListener('input', (e) => {
+    setRotation(Number(e.target.value));
+  });
+
+  // Кнопка на четверть оборота — для фото, снятых боком.
+  $('ed-rot90').onclick = () => {
+    if (!photos[activeSlot]) return;
+    const t = transformOf(activeSlot);
+    setRotation(((t.rot + 90 + 180) % 360) - 180);
+  };
+
   $('ed-reset').onclick = () => {
-    data.transforms[activeSlot] = { scale: 1, dx: 0, dy: 0 };
+    data.transforms[activeSlot] = { ...FLAT };
     openEditor(activeSlot);
     scheduleRedraw();
   };
 
   // «Вписать» — показать фото целиком внутри кадра, даже если слот обрезающий.
+  // Повёрнутое фото занимает больше места, чем его собственные ширина и высота,
+  // поэтому считаем габарит повёрнутого прямоугольника, иначе после «Вписать»
+  // углы кадра всё равно торчали бы за рамку.
   $('ed-fit').onclick = () => {
     const img = photos[activeSlot];
     if (!img) return;
     const slot = slotFrame(activeSlot);
-    const cover = Math.max(slot.w / img.width, slot.h / img.height);
-    const contain = Math.min(slot.w / img.width, slot.h / img.height);
     const t = transformOf(activeSlot);
-    t.scale = slot.mode === 'cover' ? contain / cover : 1;
+
+    const a = (t.rot || 0) * Math.PI / 180;
+    const cos = Math.abs(Math.cos(a));
+    const sin = Math.abs(Math.sin(a));
+    const effW = img.width * cos + img.height * sin;
+    const effH = img.width * sin + img.height * cos;
+
+    const base = slot.mode === 'cover'
+      ? Math.max(slot.w / img.width, slot.h / img.height)
+      : Math.min(slot.w / img.width, slot.h / img.height);
+
+    t.scale = Math.min(slot.w / effW, slot.h / effH) / base;
     t.dx = 0; t.dy = 0;
     openEditor(activeSlot);
     scheduleRedraw();
@@ -333,10 +509,28 @@ function scheduleRedraw() {
   redrawTimer = setTimeout(redraw, 120);
 }
 
+// Подложка под текущие настройки: выбранный файл, перекрашенный под акцент.
+// Перекраска идёт по полутора миллионам пикселей, поэтому результат держим
+// в кэше и пересчитываем только при смене фона или цвета.
+function currentBackground() {
+  const picked = backgrounds.find(b => b.name === data.background);
+  if (!picked) return null;
+
+  const key = `${picked.name}|${data.accent}|${data.tintBg ? 1 : 0}`;
+  if (tinted.key === key) return tinted.canvas;
+
+  tinted = {
+    key,
+    canvas: data.tintBg ? recolorAccent(picked.image, data.accent) : picked.image,
+  };
+  return tinted.canvas;
+}
+
 function redraw() {
   const payload = { ...data, photos };
-  renderCard1($('c1'), payload, { logo });
-  renderCard2($('c2'), payload, { logo });
+  const background = currentBackground();
+  renderCard1($('c1'), payload, { logo, background });
+  renderCard2($('c2'), payload, { logo, background });
   $('btn-save').disabled = !(data.brand || data.model);
 }
 
@@ -358,7 +552,7 @@ async function loadFolder(dir) {
   const txt = await window.api.readDataFile(dir);
   if (txt) {
     const parsed = parseData(txt);
-    data = { ...data, ...parsed, corners: data.corners };
+    data = { ...data, ...parsed };
   } else {
     // Имя папки обычно и есть «БРЕНД МОДЕЛЬ ВЕРСИЯ».
     const parts = dir.split(/[\\/]/).pop().split(/\s+/).filter(Boolean);
@@ -467,6 +661,33 @@ bindField('f-accent', 'accent');
 bindField('f-corners', 'corners');
 bindField('f-logo2', 'logoOnSecond');
 
+$('f-background').addEventListener('change', (e) => {
+  data.background = e.target.value;
+  scheduleRedraw();
+});
+
+$('f-tintbg').addEventListener('change', (e) => {
+  data.tintBg = e.target.checked;
+  scheduleRedraw();
+});
+
+// Батарея и нижняя лента живут во вложенных объектах — им нужна своя привязка.
+$('f-batt-type').addEventListener('input', (e) => {
+  data.battery = { ...data.battery, type: e.target.value };
+  scheduleRedraw();
+});
+$('f-batt-value').addEventListener('input', (e) => {
+  data.battery = { ...data.battery, value: e.target.value };
+  scheduleRedraw();
+});
+
+FOOTER_FIELDS.forEach(([id], i) => {
+  $(id).addEventListener('input', (e) => {
+    if (data.footer?.[i]) data.footer[i].value = e.target.value;
+    scheduleRedraw();
+  });
+});
+
 $('f-dark').addEventListener('change', (e) => {
   data.theme = e.target.checked ? 'dark' : 'light';
   scheduleRedraw();
@@ -502,13 +723,66 @@ $('btn-folder').onclick = openFolder;
 $('btn-batch').onclick = batch;
 $('btn-save').onclick = () => saveCards();
 
+async function loadCatalogFile() {
+  const res = await window.api.chooseCatalog();
+  if (!res) return;
+  if (applyCatalogText(res.text, res.path)) {
+    showDrawer(true);
+    toast(`Каталог загружен: ${catalog.length} ${modelsWord(catalog.length)}`, 'ok');
+  }
+}
+
+// Добавление своих подложек из меню: копируем файлы в папку «фоны» и сразу
+// показываем последний добавленный — иначе непонятно, сработало ли.
+async function addBackgroundFiles() {
+  const res = await window.api.addBackground();
+  if (!res) return;
+
+  busy(true, 'Читаю фоны…');
+  await reloadBackgrounds();
+  busy(false);
+
+  const last = res.added[res.added.length - 1];
+  if (backgrounds.some(b => b.name === last)) data.background = last;
+  buildBackgrounds();
+  redraw();
+  toast(`Добавлено фонов: ${res.added.length}`, 'ok');
+}
+
+$('btn-catalog').onclick = loadCatalogFile;
+$('catalog-search').addEventListener('input', buildCatalog);
+
+$('btn-menu').onclick = () => showDrawer(!drawerOpen());
+$('drawer-close').onclick = () => showDrawer(false);
+
+// Пункты верхнего меню дублируют кнопки — обработчики те же самые.
+window.api.onMenu((action) => {
+  if (action === 'catalog') loadCatalogFile();
+  if (action === 'add-background') addBackgroundFiles();
+  if (action === 'open-backgrounds') window.api.openBackgrounds();
+  if (action === 'folder') openFolder();
+  if (action === 'batch') batch();
+  if (action === 'drawer') showDrawer(!drawerOpen());
+  if (action === 'save' && !$('btn-save').disabled) saveCards();
+});
+
 // ── Старт ────────────────────────────────────────────────────────────────────
 (async function init() {
   $('size-label').textContent = `${CARD_W} × ${CARD_H}`;
   setupEditor();
   await fontsReady();
   logo = await loadImage('../шаблон/ассеты/логотип.png');
+
+  // Подложек может не быть вовсе — тогда renderCard1 рисует фон сам.
+  await reloadBackgrounds();
+  if (!data.background && backgrounds.length) data.background = backgrounds[0].name;
   syncFormFromData();
   redraw();
   drawEditor();
+
+  // Каталог с прошлого запуска подхватываем молча: если его нет — просто
+  // останется приглашение загрузить файл.
+  const saved = await window.api.loadCatalog();
+  if (saved) applyCatalogText(saved.text, saved.path);
+  else buildCatalog();
 })();

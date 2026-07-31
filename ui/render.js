@@ -3,20 +3,21 @@
 // и включается галочкой.
 
 import {
-  CARD_W, CARD_H, CARD1, CARD2, SPEC_BOX, KIT_BOX,
-  YELLOW, INK, DIM, WHITE, CREAM, specRect, kitRects,
+  CARD_W, CARD_H, CARD1, CARD2, SPEC_BOX, BATTERY_BOX, FOOTER_BOX, KIT_BOX,
+  ORANGE, INK, DIM, WHITE, CREAM, specRect, footerRect, kitRects,
 } from './layout.js';
 import {
-  font, fitText, fitTwoTone, panel, chamferPath, icon, drawContain, drawCoverPath,
-  contactShadow, darkBackground, splitBackground, lightBackground, lightSplitBackground,
+  font, fitText, fitTwoTone, panel, softPanel, iconTile, chamferPath, icon,
+  drawContain, drawCoverPath, contactShadow, catalogBackground, drawBackgroundImage,
+  splitBackground, lightSplitBackground,
   frameCorners, hexToRgba, seedFrom, readableOnLight,
 } from './draw.js';
 
-// Набор цветов под выбранную тему. Жёлтый как текст на белом нечитаем,
-// поэтому для надписей используется затемнённый вариант того же оттенка.
+// Набор цветов под выбранную тему. Слишком светлый акцент как текст на белом
+// нечитаем, поэтому для надписей берётся затемнённый вариант того же оттенка.
 function palette(data) {
   const dark = data.theme === 'dark';
-  const accent = data.accent || YELLOW;
+  const accent = data.accent || ORANGE;
   return {
     dark,
     accent,
@@ -24,6 +25,17 @@ function palette(data) {
     text: dark ? WHITE : INK,
     textOnPhoto: dark ? WHITE : INK,
     dim: dark ? '#98a2b3' : DIM,
+
+    // Плашки каталожной карточки — белый лист с мягкой тенью.
+    cardFill: dark ? 'rgba(255,255,255,0.07)' : '#ffffff',
+    cardStroke: dark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.06)',
+    cardShadow: dark ? 'rgba(0,0,0,0.45)' : 'rgba(15,23,42,0.13)',
+    divider: dark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.09)',
+    // Нижняя лента обведена акцентом — она замыкает карточку и должна читаться
+    // как отдельный блок, а не как белое пятно на светлом фоне.
+    footerStroke: dark ? hexToRgba(accent, 0.55) : hexToRgba(accent, 0.9),
+
+    // Плашки карточки комплектации — прежняя фирменная форма со срезами.
     panelFill: dark ? 'rgba(16,18,24,0.86)' : 'rgba(255,255,255,0.96)',
     panelStroke: dark ? hexToRgba(accent, 0.35) : hexToRgba(accent, 0.85),
     kitFill: dark ? 'rgba(16,18,24,0.86)' : 'rgba(255,255,255,0.97)',
@@ -32,69 +44,122 @@ function palette(data) {
   };
 }
 
-// Значение характеристики: крупное число, единица мельче рядом.
-function specValue(ctx, value, unit, rect, P) {
-  const size = Math.min(rect.h, 38);
-  ctx.font = font(900, size);
+// Какой кегль нужен, чтобы пара «число + единица» уместилась в заданную ширину.
+function specValueSize(ctx, value, unit, maxW, maxSize) {
+  ctx.font = font(900, maxSize);
   const vw = ctx.measureText(value).width;
-  ctx.font = font(700, size * 0.62);
-  const uw = unit ? ctx.measureText(unit).width + size * 0.16 : 0;
+  ctx.font = font(700, maxSize * 0.58);
+  const uw = unit ? ctx.measureText(unit).width + maxSize * 0.18 : 0;
+  return maxSize * Math.min(1, maxW / Math.max(1, vw + uw));
+}
 
-  const scale = Math.min(1, rect.w / Math.max(1, vw + uw));
-  const s = size * scale;
-
+// Значение характеристики: крупное число, единица мельче рядом.
+function specValue(ctx, value, unit, rect, color, size) {
   ctx.save();
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = P.text;
-  ctx.font = font(900, s);
-  const realVw = ctx.measureText(value).width;
-  const baseline = rect.y + s * 0.8;
+  ctx.fillStyle = color;
+  ctx.font = font(900, size);
+  const vw = ctx.measureText(value).width;
+  const baseline = rect.y + size * 0.8;
   ctx.fillText(value, rect.x, baseline);
   if (unit) {
-    ctx.font = font(700, s * 0.62);
-    ctx.fillText(unit, rect.x + realVw + s * 0.16, baseline);
+    ctx.font = font(700, size * 0.58);
+    ctx.fillText(unit, rect.x + vw + size * 0.18, baseline);
   }
   ctx.restore();
 }
 
+// Три плашки характеристик: иконка акцентом, крупное число, подпись под ним.
 function drawSpecs(ctx, data, P) {
-  (data.specs || []).slice(0, CARD1.specs.count).forEach((sp, i) => {
+  const specs = (data.specs || []).slice(0, CARD1.specs.count);
+  const valueW = CARD1.specs.w - SPEC_BOX.value.x - 14;
+
+  // Кегль числа общий для всех трёх плашек — по самому длинному значению.
+  // Иначе короткое «70» набирается крупнее, чем «2500», и колонка выглядит
+  // собранной наспех.
+  const size = Math.min(...specs.map(sp =>
+    specValueSize(ctx, String(sp.value ?? ''), sp.unit || '', valueW, 44)), 44);
+
+  specs.forEach((sp, i) => {
     const r = specRect(i);
 
-    if (!P.dark) {
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.10)';
-      ctx.shadowBlur = 16;
-      ctx.shadowOffsetY = 4;
-      chamferPath(ctx, r.x, r.y, r.w, r.h, CARD1.specs.skew, { tl: false, tr: true, br: false, bl: true });
-      ctx.fillStyle = P.panelFill;
-      ctx.fill();
-      ctx.restore();
-    }
-
-    panel(ctx, r, {
-      cut: CARD1.specs.skew, fill: P.panelFill, stroke: P.panelStroke,
-      lineWidth: P.dark ? 1.5 : 2, accent: P.accent, accentWidth: 5,
-      corners: { tl: false, tr: true, br: false, bl: true },
+    softPanel(ctx, r, {
+      radius: CARD1.specs.radius, fill: P.cardFill,
+      shadow: P.cardShadow, stroke: P.cardStroke,
     });
 
-    icon(ctx, sp.icon || 'power', r.x + SPEC_BOX.icon.x, r.y + SPEC_BOX.icon.y,
-      SPEC_BOX.icon.size, P.accentText, 2.2);
+    icon(ctx, sp.icon || 'motor', r.x + SPEC_BOX.icon.x, r.y + SPEC_BOX.icon.y,
+      SPEC_BOX.icon.size, P.accentText, 2.1);
 
     const hasLabel = !!(sp.label && String(sp.label).trim());
     specValue(ctx, String(sp.value ?? ''), sp.unit || '', {
       x: r.x + SPEC_BOX.value.x,
-      y: r.y + (hasLabel ? SPEC_BOX.value.y : (r.h - 38) / 2),
-      w: r.w - SPEC_BOX.value.x - 14,
-      h: SPEC_BOX.value.h,
-    }, P);
+      y: r.y + (hasLabel ? SPEC_BOX.value.y : (r.h - SPEC_BOX.value.h) / 2),
+    }, P.text, size);
 
     if (hasLabel) {
       fitText(ctx, sp.label, {
         x: r.x + SPEC_BOX.label.x, y: r.y + SPEC_BOX.label.y,
         w: r.w - SPEC_BOX.label.x - 14, h: SPEC_BOX.label.h,
-      }, { weight: 600, color: P.dim, maxSize: 16, uppercase: true, tracking: 0.6 });
+      }, { weight: 600, color: P.dim, maxSize: 17, uppercase: true, tracking: 0.7 });
     }
+  });
+}
+
+// Блок батареи: акцентная плитка с иконкой, тип и ёмкость двумя строками.
+function drawBattery(ctx, data, P) {
+  const b = data.battery || {};
+  if (!String(b.type || '').trim() && !String(b.value || '').trim()) return;
+
+  const r = CARD1.battery;
+  const t = BATTERY_BOX.tile;
+  iconTile(ctx, { x: r.x + t.x, y: r.y + t.y, w: t.size, h: t.size }, 'battery', {
+    radius: t.radius, fill: P.accent, iconColor: WHITE,
+    inset: BATTERY_BOX.icon.inset, lineWidth: 2.6,
+  });
+
+  fitText(ctx, b.type || '', {
+    x: r.x + BATTERY_BOX.type.x, y: r.y + BATTERY_BOX.type.y,
+    w: r.w - BATTERY_BOX.type.x, h: BATTERY_BOX.type.h,
+  }, { weight: 900, color: P.text, maxSize: 54, uppercase: true });
+
+  fitText(ctx, b.value || '', {
+    x: r.x + BATTERY_BOX.value.x, y: r.y + BATTERY_BOX.value.y,
+    w: r.w - BATTERY_BOX.value.x, h: BATTERY_BOX.value.h,
+  }, { weight: 800, color: P.accentText, maxSize: 42 });
+}
+
+// Нижняя лента: одна плашка на всю ширину, внутри три колонки с разделителями.
+function drawFooter(ctx, data, P) {
+  const items = (data.footer || []).filter(it => it && String(it.value || '').trim());
+  if (!items.length) return;
+
+  const f = CARD1.footer;
+  softPanel(ctx, f, {
+    radius: f.radius, fill: P.cardFill, shadow: P.cardShadow,
+    stroke: P.footerStroke, lineWidth: 2.5,
+  });
+
+  const count = Math.min(items.length, 3);
+  items.slice(0, count).forEach((it, i) => {
+    const r = footerRect(i, count);
+
+    if (i) {
+      ctx.fillStyle = P.divider;
+      ctx.fillRect(r.x, r.y + 22, 1.5, r.h - 44);
+    }
+
+    icon(ctx, it.icon || 'shield', r.x + FOOTER_BOX.icon.x,
+      r.y + (r.h - FOOTER_BOX.icon.size) / 2, FOOTER_BOX.icon.size, P.accentText, 2);
+
+    const textW = r.w - FOOTER_BOX.label.x - 14;
+    fitText(ctx, it.label || '', {
+      x: r.x + FOOTER_BOX.label.x, y: r.y + FOOTER_BOX.label.y, w: textW, h: FOOTER_BOX.label.h,
+    }, { weight: 800, color: P.accentText, maxSize: 19, uppercase: true, tracking: 0.5 });
+
+    fitText(ctx, it.value || '', {
+      x: r.x + FOOTER_BOX.value.x, y: r.y + FOOTER_BOX.value.y, w: textW, h: FOOTER_BOX.value.h,
+    }, { weight: 800, color: P.text, maxSize: 24, uppercase: true });
   });
 }
 
@@ -114,39 +179,37 @@ export function renderCard1(canvas, data, assets = {}) {
   const P = palette(data);
   const seed = seedFrom(`${data.brand}${data.model}${data.version}`);
 
-  if (P.dark) darkBackground(ctx, CARD_W, CARD_H, P.accent, seed);
-  else lightBackground(ctx, CARD_W, CARD_H, P.accent, seed);
+  // Фирменная подложка из файла. Тёмная тема на неё не рассчитана — там
+  // остаётся рисованный фон, иначе белые горы вылезут под тёмную типографику.
+  if (assets.background && !P.dark) drawBackgroundImage(ctx, assets.background, CARD_W, CARD_H);
+  else catalogBackground(ctx, CARD_W, CARD_H, P.accent, seed, P.dark);
 
-  // Полупрозрачный номер модели на фоне — декоративный элемент шаблона.
-  if (data.version) {
-    ctx.save();
-    ctx.globalAlpha = P.ghost;
-    fitText(ctx, data.version, CARD1.ghost, {
-      weight: 900, color: P.accent, italic: true, align: 'center', valign: 'middle',
-      maxSize: CARD1.ghost.h,
-    });
-    ctx.restore();
-  }
-
+  // Товар рисуем до текста: левая колонка ложится поверх кадра, поэтому
+  // широкий байк не перекрывает название, даже если заезжает под него.
   const frontT = data.transforms?.front;
   const box = drawContain(ctx, data.photos?.front, CARD1.photo, { transform: frontT });
   if (box) {
-    contactShadow(ctx, box, P.dark ? 0.55 : 0.34);
+    contactShadow(ctx, box, P.dark ? 0.5 : 0.30);
     drawContain(ctx, data.photos.front, CARD1.photo, { transform: frontT });
   }
 
-  fitText(ctx, data.brand || '', CARD1.brand, {
-    weight: 800, color: P.text, maxSize: 46, tracking: 3, uppercase: true, italic: true,
-  });
-
-  fitTwoTone(ctx, data.model || '', data.version || '', CARD1.model, {
-    weight: 900, colorA: P.text, colorB: P.accentText, italic: true,
-  });
-
-  drawSpecs(ctx, data, P);
   drawLogo(ctx, assets.logo, CARD1.logo, P);
 
-  if (data.corners !== false) frameCorners(ctx, CARD_W, CARD_H, P.accentText, 52, 18, 3);
+  fitText(ctx, data.brand || '', CARD1.brand, {
+    weight: 800, color: P.text, maxSize: 56, tracking: 2, uppercase: true,
+  });
+
+  // Модель и версия — одной акцентной надписью, переносится по словам сама.
+  const title = [data.model, data.version].filter(Boolean).join(' ');
+  fitText(ctx, title, CARD1.model, {
+    weight: 900, color: P.accentText, maxSize: 118, uppercase: true, wrap: true, lineGap: 0.02,
+  });
+
+  drawBattery(ctx, data, P);
+  drawSpecs(ctx, data, P);
+  drawFooter(ctx, data, P);
+
+  if (data.corners) frameCorners(ctx, CARD_W, CARD_H, P.accentText, 52, 18, 3);
   return canvas;
 }
 
@@ -225,8 +288,21 @@ export function renderCard2(canvas, data, assets = {}) {
   const seed = seedFrom(`${data.brand}${data.model}${data.version}2`);
 
   const splitY = CARD2.grid.y - 18;
-  if (P.dark) splitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
-  else lightSplitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
+  if (assets.background && !P.dark) {
+    drawBackgroundImage(ctx, assets.background, CARD_W, CARD_H);
+    // Под сеткой блоков фон приглушаем молочной вуалью: иначе горы спорят
+    // с восемью белыми плашками и текст в них теряет контраст.
+    const veil = ctx.createLinearGradient(0, splitY - 60, 0, CARD_H);
+    veil.addColorStop(0, 'rgba(255,255,255,0)');
+    veil.addColorStop(0.12, 'rgba(255,255,255,0.72)');
+    veil.addColorStop(1, 'rgba(255,255,255,0.88)');
+    ctx.fillStyle = veil;
+    ctx.fillRect(0, splitY - 60, CARD_W, CARD_H - splitY + 60);
+  } else if (P.dark) {
+    splitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
+  } else {
+    lightSplitBackground(ctx, CARD_W, CARD_H, P.accent, seed, splitY);
+  }
 
   const rearT = data.transforms?.rear;
   const box = drawContain(ctx, data.photos?.rear, CARD2.photo, { transform: rearT });
@@ -257,7 +333,7 @@ export function renderCard2(canvas, data, assets = {}) {
   drawKitGrid(ctx, data, P);
 
   if (data.logoOnSecond) drawLogo(ctx, assets.logo, CARD2.logo, P);
-  if (data.corners !== false) frameCorners(ctx, CARD_W, CARD_H, P.accentText, 52, 18, 3);
+  if (data.corners) frameCorners(ctx, CARD_W, CARD_H, P.accentText, 52, 18, 3);
 
   return canvas;
 }

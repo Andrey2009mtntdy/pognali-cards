@@ -8,9 +8,13 @@
 <body>
 
 <header class="top">
-  <div class="brand">
-    <span class="brand-mark">▲</span>
-    <span>Карточки для маркетплейсов</span>
+  <div class="top-left">
+    <button id="btn-menu" class="icon-btn" title="Список моделей (Ctrl+M)">☰</button>
+    <div class="brand">
+      <span class="brand-mark">▲</span>
+      <span>Карточки для маркетплейсов</span>
+    </div>
+    <span id="current-model" class="chip hidden"></span>
   </div>
   <div class="top-actions">
     <button id="btn-folder" class="btn btn-primary">Выбрать папку с фото</button>
@@ -21,7 +25,22 @@
 
 <main class="layout">
 
-  <!-- ЛЕВАЯ КОЛОНКА: данные -->
+  <!-- ЛЕВАЯ КОЛОНКА: список моделей. Полноценная колонка раскладки, а не
+       всплывающая панель: кнопкой ☰ она сворачивается, остальное раздвигается. -->
+  <aside id="drawer" class="pane pane-models">
+    <div class="drawer-head">
+      <span>Модели</span>
+      <button id="drawer-close" class="icon-btn" title="Свернуть список">‹</button>
+    </div>
+    <input id="catalog-search" placeholder="поиск по названию">
+    <div id="catalog-list" class="catalog-list"></div>
+    <div class="drawer-foot">
+      <button id="btn-catalog" class="btn btn-mini">Загрузить каталог…</button>
+      <span id="catalog-name" class="hint">каталог не загружен</span>
+    </div>
+  </aside>
+
+  <!-- СРЕДНЯЯ КОЛОНКА: данные -->
   <section class="pane pane-form">
 
     <div class="card">
@@ -32,18 +51,35 @@
         <label>Модель<input id="f-model" placeholder="WISH"></label>
         <label>Версия<input id="f-version" placeholder="03"></label>
       </div>
+      <div class="grid-3">
+        <label>Батарея — тип<input id="f-batt-type" placeholder="LI-ION"></label>
+        <label>Батарея — ёмкость<input id="f-batt-value" placeholder="60В / 27Ач"></label>
+      </div>
+      <div class="grid-3">
+        <label>Фон карточки<select id="f-background"></select></label>
+      </div>
       <div class="row">
-        <label class="color">Акцент<input type="color" id="f-accent" value="#FFDD00"></label>
+        <label class="color">Акцент<input type="color" id="f-accent" value="#F26522"></label>
+        <label class="check"><input type="checkbox" id="f-tintbg" checked> Красить полосы фона акцентом</label>
         <label class="check"><input type="checkbox" id="f-removebg" checked> Убирать фон у фото</label>
         <label class="check"><input type="checkbox" id="f-dark"> Тёмный фон</label>
-        <label class="check"><input type="checkbox" id="f-corners" checked> Уголки в рамке</label>
+        <label class="check"><input type="checkbox" id="f-corners"> Уголки в рамке</label>
         <label class="check"><input type="checkbox" id="f-logo2"> Логотип на 2-й</label>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Характеристики — 4 плашки</div>
+      <div class="card-title">Характеристики — 3 плашки</div>
       <div id="specs"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Нижняя лента — 3 пункта</div>
+      <div class="grid-3">
+        <label>Гарантия<input id="f-warranty" placeholder="3 месяца"></label>
+        <label>Маркировка<input id="f-marking" placeholder="240"></label>
+        <label>Влагозащита<input id="f-ip" placeholder="IP54"></label>
+      </div>
     </div>
 
     <div class="card">
@@ -66,7 +102,7 @@
 
   </section>
 
-  <!-- ПРАВАЯ КОЛОНКА: превью -->
+  <!-- ПРАВАЯ КОЛОНКА: превью и кадрирование -->
   <section class="pane pane-preview">
     <div class="preview-head">
       <span>Предпросмотр</span>
@@ -91,8 +127,13 @@
         </div>
         <div class="editor-tools">
           <span class="ed-hint">тяни мышью · колесо = масштаб</span>
+          <span class="ed-hint">масштаб</span>
           <input type="range" id="ed-zoom" min="50" max="400" step="2" value="100" title="Масштаб">
           <b id="ed-zoom-val">100%</b>
+          <span class="ed-hint">поворот</span>
+          <input type="range" id="ed-rot" min="-180" max="180" step="1" value="0" title="Поворот">
+          <b id="ed-rot-val">0°</b>
+          <button id="ed-rot90" class="btn btn-mini" title="Повернуть на 90° по часовой">⟳ 90°</button>
           <button id="ed-fit" class="btn btn-mini">Вписать</button>
           <button id="ed-reset" class="btn btn-mini">Сброс</button>
         </div>
