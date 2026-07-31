@@ -14,7 +14,9 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const src = path.join(root, 'шаблон', 'ассеты', 'логотип.png');
+// Берём вариант логотипа для тёмного фона: у иконки фон тёмный, и белая
+// эмблема на нём читается, а чёрная с основного логотипа слилась бы с фоном.
+const src = path.join(root, 'шаблон', 'ассеты', 'логотип-тёмный.png');
 const outDir = path.join(root, 'build');
 const out = path.join(outDir, 'icon.png');
 

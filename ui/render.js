@@ -163,7 +163,11 @@ function drawFooter(ctx, data, P) {
   });
 }
 
-function drawLogo(ctx, logo, rect, P) {
+// Логотип существует в двух вариантах: основной — чёрные буквы под светлый фон,
+// и светлый — под тёмную тему. Взять не тот значит потерять логотип: чёрный на
+// тёмном и белый на белом одинаково не видны.
+function drawLogo(ctx, assets, rect, P) {
+  const logo = P.dark ? (assets.logoDark || assets.logo) : (assets.logo || assets.logoDark);
   if (logo) { drawContain(ctx, logo, rect); return; }
   fitText(ctx, 'ПОГНАЛИ РФ', rect, {
     weight: 900, color: P.text, align: 'center', valign: 'middle',
@@ -193,7 +197,7 @@ export function renderCard1(canvas, data, assets = {}) {
     drawContain(ctx, data.photos.front, CARD1.photo, { transform: frontT });
   }
 
-  drawLogo(ctx, assets.logo, CARD1.logo, P);
+  drawLogo(ctx, assets, CARD1.logo, P);
 
   fitText(ctx, data.brand || '', CARD1.brand, {
     weight: 800, color: P.text, maxSize: 56, tracking: 2, uppercase: true,
@@ -332,7 +336,7 @@ export function renderCard2(canvas, data, assets = {}) {
 
   drawKitGrid(ctx, data, P);
 
-  if (data.logoOnSecond) drawLogo(ctx, assets.logo, CARD2.logo, P);
+  if (data.logoOnSecond) drawLogo(ctx, assets, CARD2.logo, P);
   if (data.corners) frameCorners(ctx, CARD_W, CARD_H, P.accentText, 52, 18, 3);
 
   return canvas;

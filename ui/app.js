@@ -20,7 +20,8 @@ let photos = {};           // slot → Image/Canvas
 let slotOfFile = {};       // имя файла → слот (для подписей в галерее)
 let activeSlot = 'front';
 let folder = null;
-let logo = null;
+let logo = null;           // основной — чёрные буквы, под светлый фон
+let logoDark = null;       // светлый вариант, для тёмной темы
 let redrawTimer = null;
 let backgrounds = [];      // [{ name, image }] — подложки из папки «фоны»
 let tinted = { key: null, canvas: null };   // перекрашенная подложка, чтобы не считать её заново
@@ -529,8 +530,8 @@ function currentBackground() {
 function redraw() {
   const payload = { ...data, photos };
   const background = currentBackground();
-  renderCard1($('c1'), payload, { logo, background });
-  renderCard2($('c2'), payload, { logo, background });
+  renderCard1($('c1'), payload, { logo, logoDark, background });
+  renderCard2($('c2'), payload, { logo, logoDark, background });
   $('btn-save').disabled = !(data.brand || data.model);
 }
 
@@ -771,7 +772,10 @@ window.api.onMenu((action) => {
   $('size-label').textContent = `${CARD_W} × ${CARD_H}`;
   setupEditor();
   await fontsReady();
-  logo = await loadImage('../шаблон/ассеты/логотип.png');
+  [logo, logoDark] = await Promise.all([
+    loadImage('../шаблон/ассеты/логотип.png'),
+    loadImage('../шаблон/ассеты/логотип-тёмный.png'),
+  ]);
 
   // Подложек может не быть вовсе — тогда renderCard1 рисует фон сам.
   await reloadBackgrounds();
