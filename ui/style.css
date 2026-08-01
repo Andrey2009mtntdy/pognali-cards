@@ -92,6 +92,7 @@ input[type=color] {
 
 .spec-row, .kit-row { display: grid; gap: 7px; margin-bottom: 7px; align-items: center; }
 .spec-row { grid-template-columns: 96px 1fr 74px 1fr; }
+.footer-row { grid-template-columns: 96px 1fr 1fr; }
 .kit-row  { grid-template-columns: 22px 1fr 1fr; }
 .kit-num { font: 12px 'MontEB'; color: var(--accent); text-align: center; }
 select {

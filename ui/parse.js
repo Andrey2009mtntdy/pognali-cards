@@ -121,11 +121,23 @@ export function parseData(text) {
     }
   }
 
+  // Нижняя лента. Старый формат «Гарантия: 3 месяца» меняет только значение,
+  // новый «Лента 1: ГАРАНТИЯ | 3 месяца | shield» — ещё надпись и иконку.
   const footer = FOOTER_PRESETS.map(f => ({ ...f }));
   const FOOTER_KEYS = ['гарантия', 'маркировка', 'влагозащита'];
   FOOTER_KEYS.forEach((key, i) => {
     if (fields[key]) footer[i].value = fields[key];
   });
+  for (let i = 0; i < 3; i++) {
+    const raw = fields[`лента ${i + 1}`];
+    if (!raw) continue;
+    const [label, value = '', icon = ''] = String(raw).split('|').map(s => s.trim());
+    footer[i] = {
+      icon: icon || footer[i].icon,
+      label: label.toUpperCase(),
+      value,
+    };
+  }
 
   const out = {
     brand: (fields['бренд'] || '').toUpperCase(),
@@ -170,9 +182,10 @@ export function stringifyData(d) {
 
   const b = d.battery || {};
   lines.push(`Батарея: ${[b.type, b.value].filter(Boolean).join(' | ')}`);
+  // Пишем полной строкой: надпись и иконка теперь редактируются, а старый
+  // формат «Гарантия: …» их не сохранял и сбрасывал бы правки при открытии.
   (d.footer || []).forEach((f, i) => {
-    const key = ['Гарантия', 'Маркировка', 'Влагозащита'][i];
-    if (key) lines.push(`${key}: ${f.value || ''}`);
+    lines.push(`Лента ${i + 1}: ${f.label || ''} | ${f.value || ''} | ${f.icon || ''}`);
   });
   lines.push('');
 

@@ -9,7 +9,7 @@ import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement, drawPlaced
 const $ = (id) => document.getElementById(id);
 
 // Поля нижней ленты: порядок совпадает с колонками на карточке.
-const FOOTER_FIELDS = [['f-warranty'], ['f-marking'], ['f-ip']];
+
 
 // Кадр без правок: масштаб 1, без сдвига и поворота.
 const FLAT = { scale: 1, dx: 0, dy: 0, rot: 0 };
@@ -72,6 +72,37 @@ function buildSpecs() {
     label.oninput = () => { sp.label = label.value; scheduleRedraw(); };
 
     row.append(sel, val, unit, label);
+    box.append(row);
+  });
+}
+
+// Нижняя лента: у каждого пункта своя иконка, надпись и значение.
+// Надписи не зашиты — «ГАРАНТИЯ» можно заменить хоть на «ДОСТАВКА».
+function buildFooter() {
+  const box = $('footer-rows');
+  box.innerHTML = '';
+  (data.footer || []).forEach((it, i) => {
+    const row = document.createElement('div');
+    row.className = 'spec-row footer-row';
+
+    const sel = document.createElement('select');
+    ICON_NAMES.forEach(n => {
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      if (n === it.icon) o.selected = true;
+      sel.append(o);
+    });
+    sel.onchange = () => { it.icon = sel.value; scheduleRedraw(); };
+
+    const label = document.createElement('input');
+    label.value = it.label || ''; label.placeholder = 'надпись';
+    label.oninput = () => { it.label = label.value.toUpperCase(); scheduleRedraw(); };
+
+    const val = document.createElement('input');
+    val.value = it.value || ''; val.placeholder = 'значение';
+    val.oninput = () => { it.value = val.value; scheduleRedraw(); };
+
+    row.append(sel, label, val);
     box.append(row);
   });
 }
@@ -280,7 +311,6 @@ function syncFormFromData() {
   $('f-version').value = data.version || '';
   $('f-batt-type').value = data.battery?.type || '';
   $('f-batt-value').value = data.battery?.value || '';
-  FOOTER_FIELDS.forEach(([id], i) => { $(id).value = data.footer?.[i]?.value || ''; });
   $('f-accent').value = data.accent || ORANGE;
   $('f-tintbg').checked = !!data.tintBg;
   $('f-removebg').checked = !!data.removeBg;
@@ -290,7 +320,7 @@ function syncFormFromData() {
   $('f-dark').checked = data.theme === 'dark';
   $('f-tol').value = data.tolerance ?? 38;
   $('tol-val').textContent = data.tolerance ?? 38;
-  buildSpecs(); buildKit(); buildSlots(); buildGallery();
+  buildSpecs(); buildFooter(); buildKit(); buildSlots(); buildGallery();
 }
 
 // ── Редактор кадрирования ────────────────────────────────────────────────────
@@ -682,12 +712,6 @@ $('f-batt-value').addEventListener('input', (e) => {
   scheduleRedraw();
 });
 
-FOOTER_FIELDS.forEach(([id], i) => {
-  $(id).addEventListener('input', (e) => {
-    if (data.footer?.[i]) data.footer[i].value = e.target.value;
-    scheduleRedraw();
-  });
-});
 
 $('f-dark').addEventListener('change', (e) => {
   data.theme = e.target.checked ? 'dark' : 'light';
