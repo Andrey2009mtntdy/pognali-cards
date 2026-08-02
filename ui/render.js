@@ -124,12 +124,12 @@ function drawBattery(ctx, data, P) {
   fitText(ctx, b.type || '', {
     x: r.x + BATTERY_BOX.type.x, y: r.y + BATTERY_BOX.type.y,
     w: r.w - BATTERY_BOX.type.x, h: BATTERY_BOX.type.h,
-  }, { weight: 900, color: P.text, maxSize: 54, uppercase: true });
+  }, { weight: 900, color: P.text, maxSize: 70, uppercase: true });
 
   fitText(ctx, b.value || '', {
     x: r.x + BATTERY_BOX.value.x, y: r.y + BATTERY_BOX.value.y,
     w: r.w - BATTERY_BOX.value.x, h: BATTERY_BOX.value.h,
-  }, { weight: 800, color: P.accentText, maxSize: 42 });
+  }, { weight: 800, color: P.accentText, maxSize: 55 });
 }
 
 // Нижняя лента: одна плашка на всю ширину, внутри три колонки с разделителями.
@@ -209,10 +209,12 @@ export function renderCard1(canvas, data, assets = {}) {
   // Модель и версия — акцентной надписью в две строки и с тем же наклоном,
   // что на карточке комплектации. Перенос ставим сами: на автоперенос
   // полагаться нельзя — короткое название вроде «U3 45 AH» уехало бы в строку.
+  // Начертание узкое: при той же высоте буквы занимают меньше ширины,
+  // поэтому длинные названия не приходится ужимать.
   const title = [data.model, data.version].filter(Boolean).join('\n');
   fitText(ctx, title, CARD1.model, {
-    weight: 900, color: P.accentText, maxSize: 118, uppercase: true,
-    wrap: true, lineGap: 0.02, italic: true,
+    weight: 900, color: P.accentText, maxSize: 189, uppercase: true,
+    wrap: true, lineGap: -0.2, italic: true, family: 'Narrow',
   });
 
   drawBattery(ctx, data, P);

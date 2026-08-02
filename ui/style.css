@@ -11,6 +11,13 @@
 @font-face { font-family: 'MontEB'; src: url('../шаблон/шрифты/Montserrat-ExtraBoldItalic.ttf'); font-style: italic; font-display: block; }
 @font-face { font-family: 'MontBk'; src: url('../шаблон/шрифты/Montserrat-BlackItalic.ttf');     font-style: italic; font-display: block; }
 
+/* Узкое начертание для названия модели: та же высота, но буквы уже,
+   поэтому длинные названия помещаются без ужимания.
+   Extra Condensed — самый узкий вариант Fira Sans; обычный Condensed
+   оказался недостаточно узким. */
+@font-face { font-family: 'Narrow'; src: url('../шаблон/шрифты/FiraSansExtraCondensed-ExtraBold.ttf');       font-display: block; }
+@font-face { font-family: 'Narrow'; src: url('../шаблон/шрифты/FiraSansExtraCondensed-ExtraBoldItalic.ttf'); font-style: italic; font-display: block; }
+
 :root {
   --bg: #15171c;
   --bg2: #1c1f26;

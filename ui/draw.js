@@ -4,10 +4,11 @@
 // ── Шрифты ───────────────────────────────────────────────────────────────────
 const FAMILY = { 500: 'MontM', 600: 'MontSB', 700: 'MontB', 800: 'MontEB', 900: 'MontBk' };
 
-export function font(weight, size, italic = false) {
+export function font(weight, size, italic = false, family = null) {
   const w = FAMILY[weight] ? weight
     : weight >= 850 ? 900 : weight >= 750 ? 800 : weight >= 650 ? 700 : weight >= 550 ? 600 : 500;
-  return `${italic ? 'italic ' : ''}${Math.max(1, Math.round(size))}px ${FAMILY[w]}, Arial, sans-serif`;
+  const fam = family || FAMILY[w];
+  return `${italic ? 'italic ' : ''}${Math.max(1, Math.round(size))}px ${fam}, Arial, sans-serif`;
 }
 
 export async function fontsReady() {
@@ -17,6 +18,7 @@ export async function fontsReady() {
   const need = [
     '100px MontM', '100px MontSB', '100px MontB', '100px MontEB', '100px MontBk',
     'italic 100px MontEB', 'italic 100px MontBk',
+    '100px Narrow', 'italic 100px Narrow',
   ];
   await Promise.all(need.map(f => document.fonts.load(f).catch(() => {})));
   return document.fonts.ready;
@@ -141,7 +143,7 @@ export function fitText(ctx, text, rect, opts = {}) {
   const {
     weight = 700, color = '#fff', align = 'left', valign = 'top',
     maxSize = rect.h, minSize = 8, minScale = 0.75, tracking = 0,
-    lineGap = 0.08, uppercase = false, wrap = false, italic = false, bolder = 0,
+    lineGap = 0.08, uppercase = false, wrap = false, italic = false, bolder = 0, family = null,
   } = opts;
 
   const raw = String(uppercase ? String(text).toUpperCase() : text);
@@ -149,7 +151,7 @@ export function fitText(ctx, text, rect, opts = {}) {
   const lineFactor = 1 + lineGap;
 
   const widthOf = (s, size) => {
-    ctx.font = font(weight, size, italic);
+    ctx.font = font(weight, size, italic, family);
     return ctx.measureText(s).width + tracking * Math.max(0, s.length - 1);
   };
 
@@ -188,7 +190,7 @@ export function fitText(ctx, text, rect, opts = {}) {
   const scaleX = measured > rect.w ? Math.max(minScale, rect.w / measured) : 1;
 
   ctx.save();
-  ctx.font = font(weight, size, italic);
+  ctx.font = font(weight, size, italic, family);
   ctx.fillStyle = color;
   ctx.textBaseline = 'alphabetic';
 
