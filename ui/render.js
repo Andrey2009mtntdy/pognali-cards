@@ -79,7 +79,7 @@ function drawSpecs(ctx, data, P) {
   // Иначе короткое «70» набирается крупнее, чем «2500», и колонка выглядит
   // собранной наспех.
   const size = Math.min(...specs.map(sp =>
-    specValueSize(ctx, String(sp.value ?? ''), sp.unit || '', valueW, 44)), 44);
+    specValueSize(ctx, String(sp.value ?? ''), sp.unit || '', valueW, 52)), 52);
 
   specs.forEach((sp, i) => {
     const r = specRect(i);
@@ -92,7 +92,7 @@ function drawSpecs(ctx, data, P) {
     });
 
     icon(ctx, sp.icon || 'motor', r.x + SPEC_BOX.icon.x, r.y + SPEC_BOX.icon.y,
-      SPEC_BOX.icon.size, P.accentText, 2.1);
+      SPEC_BOX.icon.size, P.accentText, 2.2);
 
     const hasLabel = !!(sp.label && String(sp.label).trim());
     specValue(ctx, String(sp.value ?? ''), sp.unit || '', {
@@ -104,7 +104,7 @@ function drawSpecs(ctx, data, P) {
       fitText(ctx, sp.label, {
         x: r.x + SPEC_BOX.label.x, y: r.y + SPEC_BOX.label.y,
         w: r.w - SPEC_BOX.label.x - 14, h: SPEC_BOX.label.h,
-      }, { weight: 600, color: P.dim, maxSize: 17, uppercase: true, tracking: 0.7 });
+      }, { weight: 600, color: P.dim, maxSize: 20, uppercase: true, tracking: 0.7 });
     }
   });
 }
@@ -153,16 +153,16 @@ function drawFooter(ctx, data, P) {
     }
 
     icon(ctx, it.icon || 'shield', r.x + FOOTER_BOX.icon.x,
-      r.y + (r.h - FOOTER_BOX.icon.size) / 2, FOOTER_BOX.icon.size, P.accentText, 2);
+      r.y + (r.h - FOOTER_BOX.icon.size) / 2, FOOTER_BOX.icon.size, P.accentText, 2.2);
 
     const textW = r.w - FOOTER_BOX.label.x - 14;
     fitText(ctx, it.label || '', {
       x: r.x + FOOTER_BOX.label.x, y: r.y + FOOTER_BOX.label.y, w: textW, h: FOOTER_BOX.label.h,
-    }, { weight: 800, color: P.accentText, maxSize: 19, uppercase: true, tracking: 0.5 });
+    }, { weight: 800, color: P.accentText, maxSize: 23, uppercase: true, tracking: 0.5 });
 
     fitText(ctx, it.value || '', {
       x: r.x + FOOTER_BOX.value.x, y: r.y + FOOTER_BOX.value.y, w: textW, h: FOOTER_BOX.value.h,
-    }, { weight: 800, color: P.text, maxSize: 24, uppercase: true });
+    }, { weight: 800, color: P.text, maxSize: 29, uppercase: true });
   });
 }
 
