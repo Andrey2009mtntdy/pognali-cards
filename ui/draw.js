@@ -10,7 +10,15 @@ export function font(weight, size, italic = false) {
   return `${italic ? 'italic ' : ''}${Math.max(1, Math.round(size))}px ${FAMILY[w]}, Arial, sans-serif`;
 }
 
-export function fontsReady() {
+export async function fontsReady() {
+  // document.fonts.ready ждёт только те начертания, что уже понадобились
+  // разметке. Курсив в интерфейсе не используется — он нужен лишь холсту,
+  // поэтому запрашиваем его явно, иначе первый рендер уйдёт с подменой.
+  const need = [
+    '100px MontM', '100px MontSB', '100px MontB', '100px MontEB', '100px MontBk',
+    'italic 100px MontEB', 'italic 100px MontBk',
+  ];
+  await Promise.all(need.map(f => document.fonts.load(f).catch(() => {})));
   return document.fonts.ready;
 }
 
@@ -133,7 +141,7 @@ export function fitText(ctx, text, rect, opts = {}) {
   const {
     weight = 700, color = '#fff', align = 'left', valign = 'top',
     maxSize = rect.h, minSize = 8, minScale = 0.75, tracking = 0,
-    lineGap = 0.08, uppercase = false, wrap = false, italic = false,
+    lineGap = 0.08, uppercase = false, wrap = false, italic = false, bolder = 0,
   } = opts;
 
   const raw = String(uppercase ? String(text).toUpperCase() : text);
@@ -199,6 +207,21 @@ export function fitText(ctx, text, rect, opts = {}) {
     ctx.save();
     ctx.translate(x, y + lineH * i + size * 0.78);
     ctx.scale(scaleX, 1);
+    // Уплотнение: Montserrat Black — самое жирное начертание, что есть,
+    // поэтому добавляем обводку тем же цветом. Наклонный текст без неё
+    // выглядит тоньше прямого, хотя вес у них одинаковый.
+    if (bolder) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size * bolder;
+      ctx.lineJoin = 'round';
+      if (tracking) {
+        let cx = 0;
+        for (const ch of line) { ctx.strokeText(ch, cx, 0); cx += ctx.measureText(ch).width + tracking; }
+      } else {
+        ctx.strokeText(line, 0, 0);
+      }
+    }
+
     if (tracking) {
       let cx = 0;
       for (const ch of line) { ctx.fillText(ch, cx, 0); cx += ctx.measureText(ch).width + tracking; }
@@ -213,7 +236,10 @@ export function fitText(ctx, text, rect, opts = {}) {
 
 // Двухцветная строка «WISH 03»: первое слово белым, остальное акцентом.
 export function fitTwoTone(ctx, first, second, rect, opts = {}) {
-  const { weight = 900, colorA = '#fff', colorB = '#f97316', italic = true, gap = 0.22 } = opts;
+  const { weight = 900, colorA = '#fff', colorB = '#f97316', italic = true, gap = 0.22, uppercase = true } = opts;
+  // Название модели на карточке всегда прописными — так задумано в макете,
+  // и это не должно зависеть от того, как его набрали в каталоге.
+  if (uppercase) { first = String(first).toUpperCase(); second = String(second).toUpperCase(); }
   const text = second ? `${first} ${second}` : first;
 
   let size = Math.round(rect.h / 0.78);

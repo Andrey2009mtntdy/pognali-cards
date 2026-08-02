@@ -240,7 +240,7 @@ export function emptyData() {
   return {
     brand: '', model: '', version: '',
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: false, tolerance: 38,
-    background: '', tintBg: true,
+    background: 'горы', tintBg: true,   // подложка с горами — базовый вариант
     transforms: {},
     battery: { ...BATTERY_PRESET },
     specs: SPEC_PRESETS.map(s => ({ ...s })),

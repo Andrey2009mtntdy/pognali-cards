@@ -5,6 +5,12 @@
 @font-face { font-family: 'MontEB'; src: url('../шаблон/шрифты/Montserrat-ExtraBold.ttf');  font-display: block; }
 @font-face { font-family: 'MontBk'; src: url('../шаблон/шрифты/Montserrat-Black.ttf');      font-display: block; }
 
+/* Настоящий курсив: буквы нарисованы заново, а не скошены программно.
+   Объявлены под теми же именами со style: italic — canvas сам возьмёт нужный
+   файл, когда в строке шрифта стоит «italic». */
+@font-face { font-family: 'MontEB'; src: url('../шаблон/шрифты/Montserrat-ExtraBoldItalic.ttf'); font-style: italic; font-display: block; }
+@font-face { font-family: 'MontBk'; src: url('../шаблон/шрифты/Montserrat-BlackItalic.ttf');     font-style: italic; font-display: block; }
+
 :root {
   --bg: #15171c;
   --bg2: #1c1f26;

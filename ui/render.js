@@ -34,6 +34,7 @@ function palette(data) {
     // Нижняя лента обведена акцентом — она замыкает карточку и должна читаться
     // как отдельный блок, а не как белое пятно на светлом фоне.
     footerStroke: dark ? hexToRgba(accent, 0.55) : hexToRgba(accent, 0.9),
+    specStroke: dark ? hexToRgba(accent, 0.45) : hexToRgba(accent, 0.75),
 
     // Плашки карточки комплектации — прежняя фирменная форма со срезами.
     panelFill: dark ? 'rgba(16,18,24,0.86)' : 'rgba(255,255,255,0.96)',
@@ -83,9 +84,11 @@ function drawSpecs(ctx, data, P) {
   specs.forEach((sp, i) => {
     const r = specRect(i);
 
+    // Обводка акцентом, как у нижней ленты: белая плашка на светлом фоне
+    // без неё разваливается — видна только тень.
     softPanel(ctx, r, {
       radius: CARD1.specs.radius, fill: P.cardFill,
-      shadow: P.cardShadow, stroke: P.cardStroke,
+      shadow: P.cardShadow, stroke: P.specStroke, lineWidth: 2.5,
     });
 
     icon(ctx, sp.icon || 'motor', r.x + SPEC_BOX.icon.x, r.y + SPEC_BOX.icon.y,
@@ -203,10 +206,13 @@ export function renderCard1(canvas, data, assets = {}) {
     weight: 800, color: P.text, maxSize: 56, tracking: 2, uppercase: true,
   });
 
-  // Модель и версия — одной акцентной надписью, переносится по словам сама.
-  const title = [data.model, data.version].filter(Boolean).join(' ');
+  // Модель и версия — акцентной надписью в две строки и с тем же наклоном,
+  // что на карточке комплектации. Перенос ставим сами: на автоперенос
+  // полагаться нельзя — короткое название вроде «U3 45 AH» уехало бы в строку.
+  const title = [data.model, data.version].filter(Boolean).join('\n');
   fitText(ctx, title, CARD1.model, {
-    weight: 900, color: P.accentText, maxSize: 118, uppercase: true, wrap: true, lineGap: 0.02,
+    weight: 900, color: P.accentText, maxSize: 118, uppercase: true,
+    wrap: true, lineGap: 0.02, italic: true,
   });
 
   drawBattery(ctx, data, P);
