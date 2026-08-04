@@ -424,6 +424,25 @@ const ICON_FILE = {
   drops:   ['влагозащит', 'капл', 'drops', 'water', 'ip'],
 };
 
+// Перекраска значка в нужный цвет. Белые значки (на плитке батареи) оставляем
+// белыми — их цвет и так задан правильно. Кэш по паре «картинка + цвет».
+const tinted = new Map();
+
+function tintIcon(pic, color) {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return pic;
+  const [, s, l] = hexToHsl(color);
+  if (s < 0.15 || l > 0.9) return pic;   // белый/серый — перекрашивать нечего
+
+  let byColor = tinted.get(pic);
+  if (!byColor) { byColor = new Map(); tinted.set(pic, byColor); }
+  if (byColor.has(color)) return byColor.get(color);
+
+  // Диапазон шире оранжевого: значки бывают и красноватыми, и жёлтыми.
+  const out = recolorAccent(pic, color, { fromDeg: -20, toDeg: 60, minSat: 0.15 });
+  byColor.set(color, out);
+  return out;
+}
+
 function pictureFor(name) {
   const words = ICON_FILE[name] || [];
   for (const file of Object.keys(iconImages)) {
@@ -435,8 +454,9 @@ function pictureFor(name) {
 export function icon(ctx, name, x, y, size, color, lineWidth = 2) {
   const raw0 = pictureFor(name);
   if (raw0) {
-    // Картинка рисуется как есть — свой цвет и форма, ничего не подменяем.
-    const pic = trimTransparent(raw0);
+    // Форму картинки не трогаем, а цвет ведём за акцентом карточки: значки
+    // нарисованы оранжевыми, и на синей карточке они бы торчали чужаками.
+    const pic = tintIcon(trimTransparent(raw0), color);
     const k = Math.min(size / pic.width, size / pic.height);
     const w = pic.width * k, h = pic.height * k;
     ctx.drawImage(pic, x + (size - w) / 2, y + (size - h) / 2, w, h);
