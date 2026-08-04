@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Макет карточки — Погнали РФ</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   ВСЕ РАЗМЕРЫ И ОТСТУПЫ — ЗДЕСЬ. Меняй числа, сохраняй файл (Ctrl+S),
+   обновляй страницу в браузере (F5). Значения в пикселях карточки.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* — размер карточки — */
+  --card-w: 1086px;
+  --card-h: 1448px;
+
+  /* — цвет акцента — */
+  --accent: #F26522;
+  --accent-text: #F26522;
+  --ink: #111111;
+  --dim: #6b7280;
+
+  /* — ЛОГОТИП сверху — */
+  --logo-x: 100px;
+  --logo-y: 10px;
+  --logo-w: 887px;
+  --logo-h: 239px;
+
+  /* — БРЕНД (KUGOO) — */
+  --brand-x: 46px;
+  --brand-y: 253px;
+  --brand-size: 88px;      /* высота букв */
+  --brand-track:0px;      /* разрядка между буквами */
+
+  /* — НАЗВАНИЕ (WISH 02 PRO) — */
+  --model-x:22px;
+  --model-y:330px;
+  --model-w: 700px;
+  --model-size: 236px;     /* кегль */
+  --model-line:0.73;      /* межстрочный: меньше — строки ближе */
+  --model-squeeze:0.76;   /* сжатие букв по ширине */
+
+  /* — БЛОК БАТАРЕИ — */
+  --batt-x:30px;
+  --batt-y:699px;
+  --batt-tile:110px;      /* размер оранжевой плитки */
+  --batt-radius:25px;
+  --batt-icon-pad:15px;   /* поле вокруг значка внутри плитки */
+  --batt-text-x:120px;    /* отступ текста от левого края блока */
+  --batt-type-y:10px;
+  --batt-type-size:60px;  /* LI-ION */
+  --batt-value-y:70px;
+  --batt-value-size:50px; /* 60В / 27Ач */
+
+  /* — ТРИ ПЛАШКИ ХАРАКТЕРИСТИК — */
+  --spec-x:30px;
+  --spec-y:840px;
+  --spec-w: 340px;
+  --spec-h: 111px;
+  --spec-gap: 14px;
+  --spec-radius: 26px;
+  --spec-icon-x: 26px;
+  --spec-icon-size: 73px;
+  --spec-icon-scale: 1.3;  /* мотор и спидометр крупнее остальных */
+  --spec-value-x: 125px;
+  --spec-value-y: 16px;
+  --spec-value-size: 52px;
+  --spec-label-y: 72px;
+  --spec-label-size: 20px;
+
+  /* — ФОТО ТОВАРА — */
+  --photo-x: 560px;
+  --photo-y: 335px;
+  --photo-w: 513px;
+  --photo-h: 890px;
+
+  /* — НИЖНЯЯ ЛЕНТА — */
+  --foot-x: 42px;
+  --foot-y: 1298px;
+  --foot-w: 1001px;
+  --foot-h: 128px;
+  --foot-radius: 28px;
+  --foot-icon-x: 28px;
+  --foot-icon-size: 96px;
+  --foot-text-x:130px;
+  --foot-label-y: 30px;
+  --foot-label-size:22px;
+  --foot-value-y: 64px;
+  --foot-value-size: 29px;
+}
+
+/* ── дальше служебное, обычно менять не нужно ─────────────────────── */
+@font-face { font-family: 'Mont';   src: url('../шаблон/шрифты/Montserrat-ExtraBold.ttf'); }
+@font-face { font-family: 'MontM';  src: url('../шаблон/шрифты/Montserrat-Medium.ttf'); }
+@font-face { font-family: 'MontSB'; src: url('../шаблон/шрифты/Montserrat-SemiBold.ttf'); }
+@font-face { font-family: 'Teko';   src: url('../шаблон/шрифты/Teko-Bold.woff2') format('woff2'); }
+@font-face { font-family: 'Euro';   src: url('../шаблон/шрифты/Eurostile-BoldItalic.ttf'); }
+
+body { margin: 0; background: #3a3d44; display: flex; justify-content: center; padding: 20px; }
+.stage { transform-origin: top center; }
+
+.card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  overflow: hidden;
+  background: #fff;
+  font-family: 'MontM', sans-serif;
+}
+.card > * { position: absolute; }
+
+.bg { left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.logo { left: var(--logo-x); top: var(--logo-y); width: var(--logo-w); height: var(--logo-h); object-fit: contain; }
+
+.brand {
+  left: var(--brand-x); top: var(--brand-y);
+  font-family: 'Euro', sans-serif;
+  font-size: var(--brand-size);
+  letter-spacing: var(--brand-track);
+  color: var(--ink);
+  line-height: 1;
+}
+
+.model {
+  left: var(--model-x); top: var(--model-y);
+  width: calc(var(--model-w) / var(--model-squeeze));
+  font-family: 'Teko', sans-serif;
+  font-style: italic;
+  font-size: var(--model-size);
+  line-height: var(--model-line);
+  color: var(--accent-text);
+  transform: scaleX(var(--model-squeeze));
+  transform-origin: left top;
+  white-space: pre-line;
+  /* при line-height меньше 1 первая строка уезжает вверх — компенсируем */
+  padding-top: calc(var(--model-size) * (1 - var(--model-line)) / 2);
+}
+
+.batt { left: var(--batt-x); top: var(--batt-y); }
+.batt-tile {
+  position: absolute; left: 0; top: 8px;
+  width: var(--batt-tile); height: var(--batt-tile);
+  border-radius: var(--batt-radius);
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.batt-tile svg { width: calc(var(--batt-tile) - var(--batt-icon-pad) * 2); height: auto; }
+.batt-type {
+  position: absolute; left: var(--batt-text-x); top: var(--batt-type-y);
+  font-family: 'Euro', sans-serif; font-style: italic; font-size: var(--batt-type-size);
+  color: var(--ink); line-height: 1; white-space: nowrap;
+}
+.batt-value {
+  position: absolute; left: var(--batt-text-x); top: var(--batt-value-y);
+  font-family: 'MontSB', sans-serif; font-style: italic; font-size: var(--batt-value-size);
+  color: var(--accent-text); line-height: 1; white-space: nowrap;
+}
+
+.spec {
+  left: var(--spec-x); width: var(--spec-w); height: var(--spec-h);
+  border-radius: var(--spec-radius);
+  background: #fff;
+  border: 2.5px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  box-shadow: 0 8px 26px rgba(15,23,42,.13);
+}
+.spec-1 { top: var(--spec-y); }
+.spec-2 { top: calc(var(--spec-y) + (var(--spec-h) + var(--spec-gap))); }
+.spec-3 { top: calc(var(--spec-y) + (var(--spec-h) + var(--spec-gap)) * 2); }
+.spec svg {
+  position: absolute; left: var(--spec-icon-x); top: 50%;
+  width: calc(var(--spec-icon-size) * var(--icon-k, 1));
+  height: calc(var(--spec-icon-size) * var(--icon-k, 1));
+  transform: translateY(-50%);
+}
+.spec .val {
+  position: absolute; left: var(--spec-value-x); top: var(--spec-value-y);
+  font-family: 'Mont', sans-serif; font-size: var(--spec-value-size);
+  color: var(--ink); line-height: 1.05; white-space: nowrap;
+}
+.spec .val small { font-size: .58em; }
+.spec .lbl {
+  position: absolute; left: var(--spec-value-x); top: var(--spec-label-y);
+  font-family: 'MontSB', sans-serif; font-size: var(--spec-label-size);
+  letter-spacing: .7px; color: var(--dim); line-height: 1;
+}
+
+.photo {
+  left: var(--photo-x); top: var(--photo-y);
+  width: var(--photo-w); height: var(--photo-h);
+  object-fit: contain;
+}
+
+.foot {
+  left: var(--foot-x); top: var(--foot-y);
+  width: var(--foot-w); height: var(--foot-h);
+  border-radius: var(--foot-radius);
+  background: #fff;
+  border: 2.5px solid color-mix(in srgb, var(--accent) 90%, transparent);
+  box-shadow: 0 8px 26px rgba(15,23,42,.13);
+  display: flex;
+}
+.foot > div { flex: 1; position: relative; }
+.foot > div + div::before {
+  content: ''; position: absolute; left: 0; top: 22px; bottom: 22px;
+  width: 1.5px; background: rgba(15,23,42,.09);
+}
+.foot svg {
+  position: absolute; left: var(--foot-icon-x); top: 50%;
+  width: var(--foot-icon-size); height: var(--foot-icon-size);
+  transform: translateY(-50%);
+}
+.foot .lbl {
+  position: absolute; left: var(--foot-text-x); top: var(--foot-label-y);
+  font-family: 'Mont', sans-serif; font-size: var(--foot-label-size);
+  letter-spacing: .5px; color: var(--accent-text); line-height: 1;
+}
+.foot .val {
+  position: absolute; left: var(--foot-text-x); top: var(--foot-value-y);
+  font-family: 'Mont', sans-serif; font-size: var(--foot-value-size);
+  color: var(--ink); line-height: 1;
+}
+
+/* Панель масштаба — на саму карточку не влияет */
+.zoom {
+  position: fixed; right: 14px; top: 14px; z-index: 9;
+  background: #1c1f26; color: #e8eaee; border: 1px solid #333;
+  border-radius: 10px; padding: 10px 12px; font: 12px sans-serif;
+}
+.zoom input { width: 130px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="zoom">
+  масштаб просмотра: <b id="zv">45%</b><br>
+  <input type="range" id="z" min="20" max="100" value="45">
+</div>
+
+<div class="stage" id="stage">
+<div class="card">
+  <img class="bg" src="../шаблон/фоны/горы.png" alt="">
+  <img class="logo" src="../шаблон/ассеты/логотип.png" alt="">
+
+  <div class="brand">KUGOO</div>
+  <div class="model">WISH 02
+PRO</div>
+
+  <img class="photo" src="../модели/SIBERTON S1/перед.png" alt="">
+
+  <div class="batt">
+    <div class="batt-tile"><svg viewBox="0 0 24 24" fill="#fff" fill-rule="evenodd"><path d="M9.6 2.6h4.8v2.2h2.1a1.6 1.6 0 0 1 1.6 1.6v13.4a1.6 1.6 0 0 1-1.6 1.6H7.5a1.6 1.6 0 0 1-1.6-1.6V6.4a1.6 1.6 0 0 1 1.6-1.6h2.1z M12.9 8.2 9.2 14h2.6l-.8 4.2 4-6.1h-2.7z"/></svg></div>
+    <div class="batt-type">LI-ION</div>
+    <div class="batt-value">60В / 27Ач</div>
+  </div>
+
+  <div class="spec spec-1" style="--icon-k: var(--spec-icon-scale)">
+    <svg viewBox="0 0 24 24" fill="var(--accent-text)" fill-rule="evenodd"><path d="M5.6 6.9h9.8a1.6 1.6 0 0 1 1.6 1.6v8.2a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.7V8.5a1.6 1.6 0 0 1 1.6-1.6z M8.4 4.3h4.6a.7.7 0 0 1 .7.7v1.9H7.7V5a.7.7 0 0 1 .7-.7z M2.3 9.7h1.7v4.6H2.3a.6.6 0 0 1-.6-.6v-3.4a.6.6 0 0 1 .6-.6z M17 9.1h1.5a.7.7 0 0 1 .7.7v.5h.9a.7.7 0 0 1 .7.7v3.2a.7.7 0 0 1-.7.7h-.9v.5a.7.7 0 0 1-.7.7H17z M6.1 17.1h1.7v1.5H6.1z M13.2 17.1h1.7v1.5h-1.7z M4.6 18.4h4.7a.6.6 0 0 1 .6.6v.6a.6.6 0 0 1-.6.6H4.6a.6.6 0 0 1-.6-.6V19a.6.6 0 0 1 .6-.6z M11.7 18.4h4.7a.6.6 0 0 1 .6.6v.6a.6.6 0 0 1-.6.6h-4.7a.6.6 0 0 1-.6-.6V19a.6.6 0 0 1 .6-.6z M6.3 8.5h8.4a.6.6 0 0 1 .6.6v6a.6.6 0 0 1-.6.6H6.3a.6.6 0 0 1-.6-.6v-6a.6.6 0 0 1 .6-.6z M7 9.3h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z M7 10.9h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z M7 12.5h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z M7 14.1h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z M19.9 12.4a.55.55 0 1 1 0-1.1.55.55 0 0 1 0 1.1z"/></svg>
+    <div class="val">2500 <small>Вт</small></div>
+    <div class="lbl">МОЩНОСТЬ</div>
+  </div>
+  <div class="spec spec-2" style="--icon-k: var(--spec-icon-scale)">
+    <svg viewBox="0 0 24 24" fill="var(--accent-text)" fill-rule="evenodd"><path d="M1.8 15.8a10.2 10.2 0 0 1 20.4 0h-2.7a7.5 7.5 0 0 0-15 0z M6.57 14.34L5.26 13.86L5.59 12.95L6.90 13.43z M8.78 11.19L8.08 9.98L8.92 9.50L9.62 10.71z M11.52 10.20L11.52 8.80L12.48 8.80L12.48 10.20z M14.38 10.71L15.08 9.50L15.92 9.98L15.22 11.19z M17.10 13.43L18.41 12.95L18.74 13.86L17.43 14.34z M11.2 16.6 18.4 9.6 12.9 17.4z M12 13.2a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z M12 14.65a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/></svg>
+    <div class="val">70 <small>км/ч</small></div>
+    <div class="lbl">СКОРОСТЬ</div>
+  </div>
+  <div class="spec spec-3">
+    <svg viewBox="0 0 24 24"><path d="M9.2 7.6V6.2a2.8 2.8 0 0 1 5.6 0v1.4" fill="none" stroke="var(--accent-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.1 7.6h9.8a1.8 1.8 0 0 1 1.76 1.42l1.9 8.8A1.8 1.8 0 0 1 18.8 20H5.2a1.8 1.8 0 0 1-1.76-2.18l1.9-8.8A1.8 1.8 0 0 1 7.1 7.6z" fill="none" stroke="var(--accent-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.9 11.2h1.75v2.6l2.2-2.6h2.15l-2.65 3 2.8 3.6h-2.2l-1.8-2.55-.5.55v2H6.9z" fill="var(--accent-text)"/><path d="M17.6 13.4h-1.7a1.55 1.55 0 0 0-1.45-.85c-1.02 0-1.7.85-1.7 2.05s.7 2.15 1.8 2.15c.8 0 1.35-.4 1.52-1.05h-1.52v-1.4h3.15v1.25c-.3 1.7-1.52 2.75-3.2 2.75-2.1 0-3.5-1.45-3.5-3.65s1.4-3.6 3.42-3.6c1.62 0 2.8.85 3.13 2.35z" fill="var(--accent-text)"/></svg>
+    <div class="val">150 <small>кг</small></div>
+    <div class="lbl">НАГРУЗКА</div>
+  </div>
+
+  <div class="foot">
+    <div><svg viewBox="0 -960 960 960" fill="var(--accent-text)"><path d="m438-452-56-56q-12-12-28-12t-28 12q-12 12-12 28.5t12 28.5l84 85q12 12 28 12t28-12l170-170q12-12 12-28.5T636-593q-12-12-28.5-12T579-593L438-452Zm42 368q-7 0-13-1t-12-3q-135-45-215-166.5T160-516v-189q0-25 14.5-45t37.5-29l240-90q14-5 28-5t28 5l240 90q23 9 37.5 29t14.5 45v189q0 140-80 261.5T505-88q-6 2-12 3t-13 1Z"/></svg><div class="lbl">ГАРАНТИЯ</div><div class="val">3 МЕСЯЦА</div></div>
+    <div><svg viewBox="0 0 24 24" fill="var(--accent-text)" fill-rule="evenodd"><path d="M12 0.8000000000000007a11.2 11.2 0 1 1 0 22.4a11.2 11.2 0 1 1 0 -22.4z M12 2.5999999999999996a9.4 9.4 0 1 0 0 18.8a9.4 9.4 0 1 0 0 -18.8z M12 3.8000000000000007a8.2 8.2 0 1 1 0 16.4a8.2 8.2 0 1 1 0 -16.4z M4.20 11.05L19.80 11.05L19.80 12.95L4.20 12.95z M8.92 4.77L16.72 18.28L15.08 19.23L7.28 5.72z M16.72 5.72L8.92 19.23L7.28 18.28L15.08 4.77z M12 9.6a2.4 2.4 0 1 0 0 4.8a2.4 2.4 0 1 0 0 -4.8z"/></svg><div class="lbl">МАРКИРОВКА</div><div class="val">240</div></div>
+    <div><svg viewBox="0 0 24 24"><path d="M9 2.6c3.3 5 5 7 5 9.5a5 5 0 0 1-10 0c0-2.5 1.7-4.5 5-9.5z" fill="var(--accent-text)"/><path d="M18 11.2c2 3 3 4 3 5.4a3 3 0 0 1-6 0c0-1.4 1-2.4 3-5.4z" fill="var(--accent-text)"/></svg><div class="lbl">ВЛАГОЗАЩИТА</div><div class="val">IP54</div></div>
+  </div>
+</div>
+</div>
+
+<script>
+  // Масштаб только для просмотра: карточка 1086×1448 целиком в экран не влезает.
+  const z = document.getElementById('z');
+  const stage = document.getElementById('stage');
+  const zv = document.getElementById('zv');
+  const apply = () => {
+    stage.style.transform = 'scale(' + (z.value / 100) + ')';
+    zv.textContent = z.value + '%';
+  };
+  z.addEventListener('input', apply);
+  apply();
+</script>
+</body>
+</html>

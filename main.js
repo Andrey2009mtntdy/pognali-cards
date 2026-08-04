@@ -43,6 +43,7 @@ function buildMenu() {
         { label: 'Загрузить каталог моделей…', accelerator: 'CmdOrCtrl+O', click: () => tell('catalog') },
         { label: 'Добавить фон…', accelerator: 'CmdOrCtrl+Shift+O', click: () => tell('add-background') },
         { label: 'Открыть папку с фонами', click: () => tell('open-backgrounds') },
+        { label: 'Открыть папку со значками', click: () => tell('open-icons') },
         { type: 'separator' },
         { label: 'Выбрать папку с фото…', accelerator: 'CmdOrCtrl+D', click: () => tell('folder') },
         { label: 'Пакет: все папки…', accelerator: 'CmdOrCtrl+B', click: () => tell('batch') },
@@ -191,6 +192,48 @@ ipcMain.handle('list-model-folders', async (_e, root) => {
     name: e.name,
     path: path.join(root, e.name),
   }));
+});
+
+
+// ── Иконки-картинки ──────────────────────────────────────────────────────────
+// Если в папке «иконки» лежит файл с именем характеристики, программа рисует
+// его вместо своего векторного значка. Так можно подставить готовые иконки,
+// не трогая код.
+function iconDirs() {
+  return [
+    path.join(userDir(), 'иконки'),
+    path.join(app.getPath('userData'), 'иконки'),
+    path.join(path.dirname(app.getPath('exe')), 'иконки'),
+    path.join(__dirname, 'шаблон', 'иконки'),
+  ];
+}
+
+ipcMain.handle('list-icons', async () => {
+  const seen = new Map();
+  for (const dir of iconDirs()) {
+    let entries = [];
+    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries) {
+      if (!e.isFile() || !IMAGE_EXT.has(path.extname(e.name).toLowerCase())) continue;
+      const key = path.basename(e.name, path.extname(e.name)).toLowerCase().trim();
+      if (!seen.has(key)) seen.set(key, path.join(dir, e.name));
+    }
+  }
+  const out = {};
+  for (const [key, file] of seen) {
+    const buf = await fs.readFile(file);
+    const ext = path.extname(file).toLowerCase().replace('.', '');
+    const mime = ext === 'jpg' ? 'jpeg' : ext;
+    out[key] = `data:image/${mime};base64,${buf.toString('base64')}`;
+  }
+  return out;
+});
+
+ipcMain.handle('open-icons-folder', async () => {
+  const dir = iconDirs()[0];
+  await fs.mkdir(dir, { recursive: true });
+  shell.openPath(dir);
+  return dir;
 });
 
 // ── Подложки ─────────────────────────────────────────────────────────────────

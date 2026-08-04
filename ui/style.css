@@ -18,6 +18,18 @@
 @font-face { font-family: 'Narrow'; src: url('../шаблон/шрифты/FiraSansExtraCondensed-ExtraBold.ttf');       font-display: block; }
 @font-face { font-family: 'Narrow'; src: url('../шаблон/шрифты/FiraSansExtraCondensed-ExtraBoldItalic.ttf'); font-style: italic; font-display: block; }
 
+/* Teko для названия модели. Кириллицы в нём нет (только латиница и деванагари),
+   поэтому в цепочке за ним идёт Narrow: латинские названия наберутся Teko,
+   а если кто-то впишет модель по-русски — буквы не пропадут. */
+/* Eurostile для бренда — файл прислан заказчиком. Chakra Petch оставлен
+   вторым в цепочке: у Eurostile может не быть кириллицы. */
+@font-face { font-family: 'Euro'; src: url('../шаблон/шрифты/Eurostile-BoldItalic.ttf'); font-display: block; }
+@font-face { font-family: 'Euro'; src: url('../шаблон/шрифты/Eurostile-BoldItalic.ttf'); font-style: italic; font-display: block; }
+@font-face { font-family: 'Square'; src: url('../шаблон/шрифты/ChakraPetch-BoldItalic.ttf'); font-style: italic; font-display: block; }
+@font-face { font-family: 'Square'; src: url('../шаблон/шрифты/ChakraPetch-BoldItalic.ttf'); font-display: block; }
+
+@font-face { font-family: 'Teko'; src: url('../шаблон/шрифты/Teko-Bold.woff2') format('woff2'); font-display: block; }
+
 :root {
   --bg: #15171c;
   --bg2: #1c1f26;

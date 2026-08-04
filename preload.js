@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   openBackgrounds:  ()            => ipcRenderer.invoke('open-backgrounds-folder'),
   chooseCatalog:    ()            => ipcRenderer.invoke('choose-catalog'),
   loadCatalog:      ()            => ipcRenderer.invoke('load-catalog'),
+  listIcons:        ()            => ipcRenderer.invoke('list-icons'),
+  openIcons:        ()            => ipcRenderer.invoke('open-icons-folder'),
 
   // Команды из верхнего меню приложения.
   onMenu: (cb) => ipcRenderer.on('menu-action', (_e, action) => cb(action)),

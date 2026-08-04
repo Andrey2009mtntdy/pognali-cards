@@ -19,6 +19,9 @@ export async function fontsReady() {
     '100px MontM', '100px MontSB', '100px MontB', '100px MontEB', '100px MontBk',
     'italic 100px MontEB', 'italic 100px MontBk',
     '100px Narrow', 'italic 100px Narrow',
+    '100px Teko', 'italic 100px Teko',
+    '100px Square', 'italic 100px Square',
+    '100px Euro', 'italic 100px Euro',
   ];
   await Promise.all(need.map(f => document.fonts.load(f).catch(() => {})));
   return document.fonts.ready;
@@ -144,6 +147,7 @@ export function fitText(ctx, text, rect, opts = {}) {
     weight = 700, color = '#fff', align = 'left', valign = 'top',
     maxSize = rect.h, minSize = 8, minScale = 0.75, tracking = 0,
     lineGap = 0.08, uppercase = false, wrap = false, italic = false, bolder = 0, family = null,
+    squeeze = 1,   // сжатие букв по ширине: уже буквы — крупнее влезающий кегль
   } = opts;
 
   const raw = String(uppercase ? String(text).toUpperCase() : text);
@@ -152,7 +156,8 @@ export function fitText(ctx, text, rect, opts = {}) {
 
   const widthOf = (s, size) => {
     ctx.font = font(weight, size, italic, family);
-    return ctx.measureText(s).width + tracking * Math.max(0, s.length - 1);
+    // Ширину считаем уже сжатой, иначе подбор кегля не увидит выигрыш от squeeze.
+    return ctx.measureText(s).width * squeeze + tracking * Math.max(0, s.length - 1);
   };
 
   const wrapAt = (size) => {
@@ -201,14 +206,14 @@ export function fitText(ctx, text, rect, opts = {}) {
   else if (valign === 'bottom') y = rect.y + rect.h - blockH;
 
   lines.forEach((line, i) => {
-    const lw = (ctx.measureText(line).width + tracking * Math.max(0, line.length - 1)) * scaleX;
+    const lw = (ctx.measureText(line).width * squeeze + tracking * Math.max(0, line.length - 1)) * scaleX;
     let x = rect.x;
     if (align === 'center') x = rect.x + (rect.w - lw) / 2;
     else if (align === 'right') x = rect.x + rect.w - lw;
 
     ctx.save();
     ctx.translate(x, y + lineH * i + size * 0.78);
-    ctx.scale(scaleX, 1);
+    ctx.scale(scaleX * squeeze, 1);
     // Уплотнение: Montserrat Black — самое жирное начертание, что есть,
     // поэтому добавляем обводку тем же цветом. Наклонный текст без неё
     // выглядит тоньше прямого, хотя вес у них одинаковый.
@@ -344,42 +349,137 @@ export function contactShadow(ctx, box, strength = 0.5) {
 
 // ── Иконки ───────────────────────────────────────────────────────────────────
 const ICONS = {
-  battery: ['M3 8h13a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z', 'M21 10.5v3', 'm10.5 9.5-2.5 3.2h3l-2.5 3.3'],
-  route:   ['M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15', 'M6 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
-  gauge:   ['m12 14 4-4', 'M3.34 19a10 10 0 1 1 17.32 0'],
-  power:   ['m13 2-9 12h7l-1 8 9-12h-7z'],
-  motor:   ['M4 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z', 'M18 10h2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2', 'M7 3v3', 'M13 3v3', 'M7 18v3', 'M13 18v3'],
-  weight:  ['M12 3a4 4 0 0 0-4 4h8a4 4 0 0 0-4-4z', 'M5 21h14l-2-11H7z'],
-  shield:  ['M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z', 'm9 12 2 2 4-4'],
-  drop:    ['M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z'],
-  clock:   ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
-  // Влагозащита — крупная капля и маленькая рядом.
-  drops:   [
-    'M9 2.5 C 12.3 7.5 14 9.5 14 12 A 5 5 0 0 1 4 12 C 4 9.5 5.7 7.5 9 2.5 Z',
-    'M18 11 C 20 14 21 15 21 16.5 A 3 3 0 0 1 15 16.5 C 15 15 16 14 18 11 Z',
-  ],
-  // Маркировка шины — колесо с протектором.
-  tire:    [
-    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
-    'M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z',
-    'M12 2v3.2', 'M12 18.8V22', 'M2 12h3.2', 'M18.8 12H22',
-    'M4.9 4.9 7.2 7.2', 'M16.8 16.8 19.1 19.1',
-    'M19.1 4.9 16.8 7.2', 'M7.2 16.8 4.9 19.1',
-  ],
+  // Залитые символы Material Symbols (Apache 2.0). Контурные иконки на карточке
+  // выглядели схематично; у этих внутри проработанные детали и сплошная заливка.
+  // viewBox у них 0 -960 960 960 — отсюда поле vb, его учитывает icon().
+  battery: { evenodd: true, paths: ["M9.6 2.6h4.8v2.2h2.1a1.6 1.6 0 0 1 1.6 1.6v13.4a1.6 1.6 0 0 1-1.6 1.6H7.5a1.6 1.6 0 0 1-1.6-1.6V6.4a1.6 1.6 0 0 1 1.6-1.6h2.1z", "M12.9 8.2 9.2 14h2.6l-.8 4.2 4-6.1h-2.7z"] },
+  motor: { evenodd: true, paths: ["M5.6 6.9h9.8a1.6 1.6 0 0 1 1.6 1.6v8.2a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.7V8.5a1.6 1.6 0 0 1 1.6-1.6z", "M8.4 4.3h4.6a.7.7 0 0 1 .7.7v1.9H7.7V5a.7.7 0 0 1 .7-.7z", "M2.3 9.7h1.7v4.6H2.3a.6.6 0 0 1-.6-.6v-3.4a.6.6 0 0 1 .6-.6z", "M17 9.1h1.5a.7.7 0 0 1 .7.7v.5h.9a.7.7 0 0 1 .7.7v3.2a.7.7 0 0 1-.7.7h-.9v.5a.7.7 0 0 1-.7.7H17z", "M6.1 17.1h1.7v1.5H6.1z", "M13.2 17.1h1.7v1.5h-1.7z", "M4.6 18.4h4.7a.6.6 0 0 1 .6.6v.6a.6.6 0 0 1-.6.6H4.6a.6.6 0 0 1-.6-.6V19a.6.6 0 0 1 .6-.6z", "M11.7 18.4h4.7a.6.6 0 0 1 .6.6v.6a.6.6 0 0 1-.6.6h-4.7a.6.6 0 0 1-.6-.6V19a.6.6 0 0 1 .6-.6z", "M6.3 8.5h8.4a.6.6 0 0 1 .6.6v6a.6.6 0 0 1-.6.6H6.3a.6.6 0 0 1-.6-.6v-6a.6.6 0 0 1 .6-.6z", "M7 9.3h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z", "M7 10.9h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z", "M7 12.5h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z", "M7 14.1h7a.55.55 0 0 1 0 1.1H7a.55.55 0 0 1 0-1.1z", "M19.9 12.4a.55.55 0 1 1 0-1.1.55.55 0 0 1 0 1.1z"] },
+  gauge: { evenodd: true, paths: ["M1.8 15.8a10.2 10.2 0 0 1 20.4 0h-2.7a7.5 7.5 0 0 0-15 0z", "M6.57 14.34L5.26 13.86L5.59 12.95L6.90 13.43z", "M8.78 11.19L8.08 9.98L8.92 9.50L9.62 10.71z", "M11.52 10.20L11.52 8.80L12.48 8.80L12.48 10.20z", "M14.38 10.71L15.08 9.50L15.92 9.98L15.22 11.19z", "M17.10 13.43L18.41 12.95L18.74 13.86L17.43 14.34z", "M11.2 16.6 18.4 9.6 12.9 17.4z", "M12 13.2a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z", "M12 14.65a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"] },
+  weight: {lw:2,paths:["M9.2 7.6V6.2a2.8 2.8 0 0 1 5.6 0v1.4","M7.1 7.6h9.8a1.8 1.8 0 0 1 1.76 1.42l1.9 8.8A1.8 1.8 0 0 1 18.8 20H5.2a1.8 1.8 0 0 1-1.76-2.18l1.9-8.8A1.8 1.8 0 0 1 7.1 7.6z",{d:"M6.9 11.2h1.75v2.6l2.2-2.6h2.15l-2.65 3 2.8 3.6h-2.2l-1.8-2.55-.5.55v2H6.9z",fill:true},{d:"M17.6 13.4h-1.7a1.55 1.55 0 0 0-1.45-.85c-1.02 0-1.7.85-1.7 2.05s.7 2.15 1.8 2.15c.8 0 1.35-.4 1.52-1.05h-1.52v-1.4h3.15v1.25c-.3 1.7-1.52 2.75-3.2 2.75-2.1 0-3.5-1.45-3.5-3.65s1.4-3.6 3.42-3.6c1.62 0 2.8.85 3.13 2.35z",fill:true}]},
+  shield: { vb: 960, paths: ["m438-452-56-56q-12-12-28-12t-28 12q-12 12-12 28.5t12 28.5l84 85q12 12 28 12t28-12l170-170q12-12 12-28.5T636-593q-12-12-28.5-12T579-593L438-452Zm42 368q-7 0-13-1t-12-3q-135-45-215-166.5T160-516v-189q0-25 14.5-45t37.5-29l240-90q14-5 28-5t28 5l240 90q23 9 37.5 29t14.5 45v189q0 140-80 261.5T505-88q-6 2-12 3t-13 1Z"] },
+  tire: { evenodd: true, paths: ["M12 0.8000000000000007a11.2 11.2 0 1 1 0 22.4a11.2 11.2 0 1 1 0 -22.4z", "M12 2.5999999999999996a9.4 9.4 0 1 0 0 18.8a9.4 9.4 0 1 0 0 -18.8z", "M12 3.8000000000000007a8.2 8.2 0 1 1 0 16.4a8.2 8.2 0 1 1 0 -16.4z", "M4.20 11.05L19.80 11.05L19.80 12.95L4.20 12.95z", "M8.92 4.77L16.72 18.28L15.08 19.23L7.28 5.72z", "M16.72 5.72L8.92 19.23L7.28 18.28L15.08 4.77z", "M12 9.6a2.4 2.4 0 1 0 0 4.8a2.4 2.4 0 1 0 0 -4.8z"] },
+  drops: [{"d":"M9 2.6c3.3 5 5 7 5 9.5a5 5 0 0 1-10 0c0-2.5 1.7-4.5 5-9.5z","fill":true}, {"d":"M18 11.2c2 3 3 4 3 5.4a3 3 0 0 1-6 0c0-1.4 1-2.4 3-5.4z","fill":true}],
 };
 
 export const ICON_NAMES = Object.keys(ICONS);
 
+// Путь — либо строка (рисуется обводкой), либо { d, fill: true } для залитых
+// деталей: молния внутри аккумулятора, стрелка спидометра, протектор шины.
+// Одной обводкой такие вещи выглядят пустыми и «схематичными».
+
+// Иконки-картинки из папки «иконки». Ключ — имя файла без расширения,
+// приведённое к нижнему регистру: «мощность.png» → «мощность».
+let iconImages = {};
+export function setIconImages(map) { iconImages = map || {}; trimmed = new Map(); }
+
+// У присланных картинок вокруг рисунка остаётся прозрачное поле, и значок
+// выходит мельче плашки. Срезаем пустоту по краям — тогда в тот же квадрат
+// встаёт сам рисунок, крупнее и без воздуха. Результат кэшируем.
+let trimmed = new Map();
+
+function trimTransparent(img) {
+  if (trimmed.has(img)) return trimmed.get(img);
+
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0);
+
+  let out = img;
+  try {
+    const { data } = cx.getImageData(0, 0, c.width, c.height);
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        if (data[(y * c.width + x) * 4 + 3] > 8) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 > x0 && y1 > y0 && (x1 - x0 < c.width - 2 || y1 - y0 < c.height - 2)) {
+      const w = x1 - x0 + 1, h = y1 - y0 + 1;
+      const t = document.createElement('canvas');
+      t.width = w; t.height = h;
+      t.getContext('2d').drawImage(img, x0, y0, w, h, 0, 0, w, h);
+      out = t;
+    }
+  } catch { /* картинка из другого источника — оставляем как есть */ }
+
+  trimmed.set(img, out);
+  return out;
+}
+
+// Какое имя файла отвечает за какой значок. Русские названия — чтобы человек
+// понимал, как назвать файл, английские — на случай латинских имён.
+const ICON_FILE = {
+  motor:   ['мощност', 'мотор', 'двигател', 'power', 'motor', 'engine'],
+  gauge:   ['скорост', 'спидометр', 'speed', 'gauge', 'tacho'],
+  weight:  ['нагрузк', 'грузопод', 'вес', 'weight', 'kg', 'load'],
+  battery: ['батаре', 'аккумулятор', 'акб', 'battery'],
+  shield:  ['гаранти', 'щит', 'shield', 'guarantee'],
+  tire:    ['маркировк', 'колес', 'шина', 'tire', 'wheel'],
+  drops:   ['влагозащит', 'капл', 'drops', 'water', 'ip'],
+};
+
+function pictureFor(name) {
+  const words = ICON_FILE[name] || [];
+  for (const file of Object.keys(iconImages)) {
+    if (words.some(w => file.includes(w))) return iconImages[file];
+  }
+  return iconImages[name] || null;
+}
+
 export function icon(ctx, name, x, y, size, color, lineWidth = 2) {
-  const paths = ICONS[name] || ICONS.power;
+  const raw0 = pictureFor(name);
+  if (raw0) {
+    // Картинка рисуется как есть — свой цвет и форма, ничего не подменяем.
+    const pic = trimTransparent(raw0);
+    const k = Math.min(size / pic.width, size / pic.height);
+    const w = pic.width * k, h = pic.height * k;
+    ctx.drawImage(pic, x + (size - w) / 2, y + (size - h) / 2, w, h);
+    return;
+  }
+
+  const raw = ICONS[name] || ICONS.motor;
+  // У детализированных иконок своя толщина: общая 2.2 склеивает рёбра мотора
+  // и буквы «KG» на гире в сплошное пятно.
+  const def = Array.isArray(raw) ? raw : (raw.paths || raw);
+  const lw = Array.isArray(raw) ? lineWidth : (raw.lw || lineWidth);
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(size / 24, size / 24);
+  ctx.fillStyle = color;
   ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
+  ctx.lineWidth = lw;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  for (const d of paths) ctx.stroke(new Path2D(d));
+
+  if (raw && raw.evenodd) {
+    ctx.scale(size / 24, size / 24);
+    const p = new Path2D();
+    for (const d of raw.paths) p.addPath(new Path2D(d));
+    ctx.fill(p, 'evenodd');
+    ctx.restore();
+    return;
+  }
+
+  if (raw && raw.vb) {
+    // Material Symbols нарисованы в системе 0 -960 960 960: начало координат
+    // внизу слева, поэтому перед масштабом опускаем холст на высоту символа.
+    const k = size / raw.vb;
+    ctx.scale(k, k);
+    ctx.translate(0, raw.vb);
+    for (const d of raw.paths) ctx.fill(new Path2D(d));
+  } else {
+    ctx.scale(size / 24, size / 24);
+    for (const p of def) {
+      if (typeof p === 'string') { ctx.stroke(new Path2D(p)); continue; }
+      const path = new Path2D(p.d);
+      if (p.fill) ctx.fill(path); else ctx.stroke(path);
+    }
+  }
   ctx.restore();
 }
 
@@ -620,6 +720,12 @@ export function recolorAccent(img, targetHex, { fromDeg = 5, toDeg = 50, minSat 
   const [th, ts] = hexToHsl(targetHex);
   const from = fromDeg / 360;
   const to = toDeg / 360;
+  // Диапазон может переходить через ноль: красный лежит на стыке круга
+  // (356° и 4° — соседние цвета, но по числам далеки). Отрицательное начало
+  // означает два куска: от 0.95 до 1 и от 0 до 0.139.
+  const wraps = from < 0;
+  const fromW = wraps ? from + 1 : from;
+  const outOfRange = (h) => (wraps ? (h < fromW && h > to) : (h < from || h > to));
 
   // Быстрая отсечка до перевода в HSL: у тёплого цветного пикселя красного
   // больше, чем зелёного, а синего меньше всех. Бумага и горы почти серые и
@@ -634,7 +740,7 @@ export function recolorAccent(img, targetHex, { fromDeg = 5, toDeg = 50, minSat 
   for (let i = 0; i < px.length; i += 16) {
     if (!warm(i)) continue;
     const [h, s] = rgbToHsl(px[i], px[i + 1], px[i + 2]);
-    if (s < minSat || h < from || h > to) continue;
+    if (s < minSat || outOfRange(h)) continue;
     sum += s; count++;
   }
   if (!count) return c;                 // нечего красить — отдаём как есть
@@ -643,7 +749,7 @@ export function recolorAccent(img, targetHex, { fromDeg = 5, toDeg = 50, minSat 
   for (let i = 0; i < px.length; i += 4) {
     if (!warm(i)) continue;
     const [h, s, l] = rgbToHsl(px[i], px[i + 1], px[i + 2]);
-    if (s < minSat || h < from || h > to) continue;
+    if (s < minSat || outOfRange(h)) continue;
     const [r, g, b] = hslToRgb(th, Math.min(1, s * k), l);
     px[i] = r; px[i + 1] = g; px[i + 2] = b;
   }

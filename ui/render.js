@@ -4,7 +4,7 @@
 
 import {
   CARD_W, CARD_H, CARD1, CARD2, SPEC_BOX, BATTERY_BOX, FOOTER_BOX, KIT_BOX,
-  ORANGE, INK, DIM, WHITE, CREAM, specRect, footerRect, kitRects,
+  ORANGE, INK, DIM, WHITE, CREAM, SPEC_ICON_SCALE, specRect, footerRect, kitRects,
 } from './layout.js';
 import {
   font, fitText, fitTwoTone, panel, softPanel, iconTile, chamferPath, icon,
@@ -91,8 +91,13 @@ function drawSpecs(ctx, data, P) {
       shadow: P.cardShadow, stroke: P.specStroke, lineWidth: 2.5,
     });
 
-    icon(ctx, sp.icon || 'motor', r.x + SPEC_BOX.icon.x, r.y + SPEC_BOX.icon.y,
-      SPEC_BOX.icon.size, P.accentText, 2.2);
+    // Значок центрируем и по высоте плашки, и по ширине зоны слева от текста —
+    // раньше он стоял по фиксированному отступу и жался к левому краю.
+    const iconName = sp.icon || 'motor';
+    const iconSize = SPEC_BOX.icon.size * (SPEC_ICON_SCALE[iconName] || 1);
+    const iconZone = SPEC_BOX.value.x;
+    icon(ctx, iconName, r.x + (iconZone - iconSize) / 2, r.y + (r.h - iconSize) / 2,
+      iconSize, P.accentText, 2.2);
 
     const hasLabel = !!(sp.label && String(sp.label).trim());
     specValue(ctx, String(sp.value ?? ''), sp.unit || '', {
@@ -124,12 +129,12 @@ function drawBattery(ctx, data, P) {
   fitText(ctx, b.type || '', {
     x: r.x + BATTERY_BOX.type.x, y: r.y + BATTERY_BOX.type.y,
     w: r.w - BATTERY_BOX.type.x, h: BATTERY_BOX.type.h,
-  }, { weight: 900, color: P.text, maxSize: 70, uppercase: true });
+  }, { weight: 600, color: P.text, maxSize: 60, uppercase: true, italic: true, family: 'Euro, Square, MontEB' });
 
   fitText(ctx, b.value || '', {
     x: r.x + BATTERY_BOX.value.x, y: r.y + BATTERY_BOX.value.y,
     w: r.w - BATTERY_BOX.value.x, h: BATTERY_BOX.value.h,
-  }, { weight: 800, color: P.accentText, maxSize: 55 });
+  }, { weight: 600, color: P.accentText, maxSize: 50, italic: true });
 }
 
 // Нижняя лента: одна плашка на всю ширину, внутри три колонки с разделителями.
@@ -158,7 +163,7 @@ function drawFooter(ctx, data, P) {
     const textW = r.w - FOOTER_BOX.label.x - 14;
     fitText(ctx, it.label || '', {
       x: r.x + FOOTER_BOX.label.x, y: r.y + FOOTER_BOX.label.y, w: textW, h: FOOTER_BOX.label.h,
-    }, { weight: 800, color: P.accentText, maxSize: 23, uppercase: true, tracking: 0.5 });
+    }, { weight: 800, color: P.accentText, maxSize: 22, uppercase: true, tracking: 0.5 });
 
     fitText(ctx, it.value || '', {
       x: r.x + FOOTER_BOX.value.x, y: r.y + FOOTER_BOX.value.y, w: textW, h: FOOTER_BOX.value.h,
@@ -203,7 +208,10 @@ export function renderCard1(canvas, data, assets = {}) {
   drawLogo(ctx, assets, CARD1.logo, P);
 
   fitText(ctx, data.brand || '', CARD1.brand, {
-    weight: 800, color: P.text, maxSize: 56, tracking: 2, uppercase: true,
+    // Крупнее и с разрядкой: у Teko буквы узкие, без разбивки «KUGOO»
+    // читается сжатым комком под широким названием модели.
+    weight: 800, color: P.text, maxSize: 88, tracking: 0, uppercase: true,
+    italic: true, family: 'Euro, Square, MontEB', squeeze: 1,   // Eurostile от заказчика
   });
 
   // Модель и версия — акцентной надписью в две строки и с тем же наклоном,
@@ -213,8 +221,8 @@ export function renderCard1(canvas, data, assets = {}) {
   // поэтому длинные названия не приходится ужимать.
   const title = [data.model, data.version].filter(Boolean).join('\n');
   fitText(ctx, title, CARD1.model, {
-    weight: 900, color: P.accentText, maxSize: 189, uppercase: true,
-    wrap: true, lineGap: -0.2, italic: true, family: 'Narrow',
+    weight: 900, color: P.accentText, maxSize: 236, uppercase: true,
+    wrap: true, lineGap: -0.27, italic: true, family: 'Teko, Narrow', squeeze: 0.76,
   });
 
   drawBattery(ctx, data, P);

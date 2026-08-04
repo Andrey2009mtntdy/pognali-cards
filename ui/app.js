@@ -4,7 +4,7 @@ import { renderCard1, renderCard2, canvasToDataUrl } from './render.js';
 import { assignPhotos } from './photos.js';
 import { parseData, stringifyData, emptyData, parseCatalog } from './parse.js';
 import { PHOTO_SLOTS, CARD_W, CARD_H, ORANGE, slotFrame } from './layout.js';
-import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement, drawPlaced, recolorAccent } from './draw.js';
+import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement, drawPlaced, recolorAccent, setIconImages } from './draw.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,7 +24,8 @@ let logo = null;           // основной — чёрные буквы, по
 let logoDark = null;       // светлый вариант, для тёмной темы
 let redrawTimer = null;
 let backgrounds = [];      // [{ name, image }] — подложки из папки «фоны»
-let tinted = { key: null, canvas: null };   // перекрашенная подложка, чтобы не считать её заново
+let tinted = { key: null, canvas: null };       // перекрашенная подложка, чтобы не считать её заново
+let tintedLogo = { key: null, canvas: null };   // то же для логотипа
 let catalog = [];          // [{ title, data }] — все модели из файла каталога
 let catalogPick = null;    // название выбранной модели, для подсветки в списке
 
@@ -534,6 +535,22 @@ function setupEditor() {
   window.addEventListener('resize', () => drawEditor());
 }
 
+
+// Иконки-картинки из папки «иконки»: если файл положен, он побеждает
+// встроенный векторный значок.
+async function reloadIcons() {
+  try {
+    const map = await window.api.listIcons();
+    const out = {};
+    for (const [key, url] of Object.entries(map || {})) {
+      const img = await loadImage(url);
+      if (img) out[key] = img;
+    }
+    setIconImages(out);
+    return Object.keys(out).length;
+  } catch { return 0; }
+}
+
 // ── Отрисовка ────────────────────────────────────────────────────────────────
 function scheduleRedraw() {
   clearTimeout(redrawTimer);
@@ -557,11 +574,23 @@ function currentBackground() {
   return tinted.canvas;
 }
 
+// Красное «РФ» и полоски логотипа тоже красим акцентом — как мазки на фоне.
+// Диапазон оттенков шире, чем у фона: у логотипа акцент чисто красный,
+// в узкий оранжевый коридор он не попадает.
+function currentLogo() {
+  if (!logo || !data.tintBg) return logo;
+  const key = `logo|${data.accent}`;
+  if (tintedLogo.key === key) return tintedLogo.canvas;
+  tintedLogo = { key, canvas: recolorAccent(logo, data.accent, { fromDeg: -18, toDeg: 50, minSat: 0.25 }) };
+  return tintedLogo.canvas;
+}
+
 function redraw() {
   const payload = { ...data, photos };
   const background = currentBackground();
-  renderCard1($('c1'), payload, { logo, logoDark, background });
-  renderCard2($('c2'), payload, { logo, logoDark, background });
+  const tintedLogoImg = currentLogo();
+  renderCard1($('c1'), payload, { logo: tintedLogoImg, logoDark, background });
+  renderCard2($('c2'), payload, { logo: tintedLogoImg, logoDark, background });
   $('btn-save').disabled = !(data.brand || data.model);
 }
 
@@ -784,6 +813,11 @@ $('drawer-close').onclick = () => showDrawer(false);
 window.api.onMenu((action) => {
   if (action === 'catalog') loadCatalogFile();
   if (action === 'add-background') addBackgroundFiles();
+  if (action === 'open-icons') {
+    window.api.openIcons();
+    return;
+  }
+  if (action === 'open-icons') { window.api.openIcons(); return; }
   if (action === 'open-backgrounds') window.api.openBackgrounds();
   if (action === 'folder') openFolder();
   if (action === 'batch') batch();
@@ -803,6 +837,7 @@ window.api.onMenu((action) => {
 
   // Подложек может не быть вовсе — тогда renderCard1 рисует фон сам.
   await reloadBackgrounds();
+  await reloadIcons();   // картинки из папки «иконки», если их туда положили
   if (!data.background && backgrounds.length) data.background = backgrounds[0].name;
   syncFormFromData();
   redraw();
