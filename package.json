@@ -1,6 +1,6 @@
 {
   "name": "pognali-cards",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Генератор карточек для маркетплейсов — Погнали РФ",
   "main": "main.js",
   "scripts": {
