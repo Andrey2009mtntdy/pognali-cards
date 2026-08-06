@@ -372,6 +372,7 @@ function syncFormFromData() {
   buildBackgrounds();
   $('f-corners').checked = !!data.corners;
   $('f-logo2').checked = !!data.logoOnSecond;
+  $('f-divider').checked = data.divider !== false;
   $('f-dark').checked = data.theme === 'dark';
   $('f-tol').value = data.tolerance ?? 38;
   $('tol-val').textContent = data.tolerance ?? 38;
@@ -802,6 +803,7 @@ bindField('f-version', 'version', v => v.toUpperCase());
 bindField('f-accent', 'accent');
 bindField('f-corners', 'corners');
 bindField('f-logo2', 'logoOnSecond');
+bindField('f-divider', 'divider');
 
 $('f-background').addEventListener('change', (e) => {
   data.background = e.target.value;

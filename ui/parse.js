@@ -147,6 +147,8 @@ export function parseData(text) {
     theme: /^(да|yes|1|true|тёмн|темн)/i.test(fields['тёмная тема'] || fields['темная тема'] || '') ? 'dark' : 'light',
     removeBg: /^(да|yes|1|true)$/i.test(fields['удалять фон'] || 'да'),
     logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || ''),
+    // По умолчанию линия есть: в старых файлах строки нет, а раньше её рисовали всегда.
+    divider: !/^(нет|no|0|false)$/i.test(fields['разделитель'] || 'да'),
     corners: /^(да|yes|1|true)$/i.test(fields['уголки'] || ''),
     battery,
     footer,
@@ -187,6 +189,7 @@ export function stringifyData(d) {
     `Тёмная тема: ${d.theme === 'dark' ? 'да' : 'нет'}`,
     `Удалять фон: ${d.removeBg ? 'да' : 'нет'}`,
     `Логотип на второй: ${d.logoOnSecond ? 'да' : 'нет'}`,
+    `Разделитель: ${d.divider === false ? 'нет' : 'да'}`,
     `Уголки: ${d.corners ? 'да' : 'нет'}`,
     '',
   ];
@@ -261,6 +264,7 @@ export function emptyData() {
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: false, tolerance: 38,
     background: 'горы', tintBg: true,   // подложка с горами — базовый вариант
     background2: '',                    // пусто = вторая карточка берёт фон первой
+    divider: true,                      // полоса между названием и заголовком 2-й карточки
     transforms: {},
     slotFiles: {},                      // слот → имя файла, закреплённого вручную
     battery: { ...BATTERY_PRESET },

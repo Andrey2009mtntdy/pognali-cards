@@ -332,15 +332,20 @@ export function renderCard2(canvas, data, assets = {}) {
   }
 
   // Верхние надписи всегда по светлому фону — держим их тёмными.
+  // Бренд тем же начертанием, что и на главной, только во всю верхнюю полосу.
   fitText(ctx, data.brand || '', CARD2.brand, {
-    weight: 800, color: INK, maxSize: 38, tracking: 2.5, uppercase: true, italic: true,
+    weight: 800, color: INK, maxSize: 92, tracking: 0, uppercase: true,
+    italic: true, family: 'Euro, Square, MontEB', squeeze: 1,
   });
   fitTwoTone(ctx, data.model || '', data.version || '', CARD2.model, {
     weight: 900, colorA: INK, colorB: P.accentText, italic: true,
   });
 
-  ctx.fillStyle = hexToRgba(P.accentText, 0.95);
-  ctx.fillRect(CARD2.divider.x, CARD2.divider.y, 3, CARD2.divider.h);
+  // Разделительная полоса между названием и заголовком — отключаемая.
+  if (data.divider !== false) {
+    ctx.fillStyle = hexToRgba(P.accentText, 0.95);
+    ctx.fillRect(CARD2.divider.x, CARD2.divider.y, 3, CARD2.divider.h);
+  }
 
   fitText(ctx, 'КОМПЛЕКТАЦИЯ', {
     x: CARD2.title.x, y: CARD2.title.y, w: CARD2.title.w, h: CARD2.title.h * 0.48,
