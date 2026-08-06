@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   openBackgrounds:  ()            => ipcRenderer.invoke('open-backgrounds-folder'),
   chooseCatalog:    ()            => ipcRenderer.invoke('choose-catalog'),
   loadCatalog:      ()            => ipcRenderer.invoke('load-catalog'),
+  addPhoto:         (dir)         => ipcRenderer.invoke('add-photo', dir),
   listIcons:        ()            => ipcRenderer.invoke('list-icons'),
   openIcons:        ()            => ipcRenderer.invoke('open-icons-folder'),
 

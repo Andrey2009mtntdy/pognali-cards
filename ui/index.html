@@ -56,7 +56,8 @@
         <label>Батарея — ёмкость<input id="f-batt-value" placeholder="60В / 27Ач"></label>
       </div>
       <div class="grid-3">
-        <label>Фон карточки<select id="f-background"></select></label>
+        <label>Фон главной<select id="f-background"></select></label>
+        <label>Фон комплектации<select id="f-background2"></select></label>
       </div>
       <div class="row">
         <label class="color">Акцент<input type="color" id="f-accent" value="#F26522"></label>
@@ -87,6 +88,10 @@
     <div class="card">
       <div class="card-title">Фотографии</div>
       <div class="hint">Выбери слот и кликни фото. Файлы с понятными именами (перед, зеркала, фара…) раскладываются сами.</div>
+      <div class="row">
+        <button id="btn-add-photo" class="btn btn-mini">Загрузить фото в этот слот…</button>
+        <span class="hint small">файл копируется в папку модели и остаётся закреплён за слотом</span>
+      </div>
       <div class="slider-row">
         <span>Сила вырезания фона</span>
         <input type="range" id="f-tol" min="14" max="70" step="2" value="38">

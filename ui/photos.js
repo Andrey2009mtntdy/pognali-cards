@@ -32,7 +32,7 @@ const REAR_RE  = /зад(?!н\w*\s*фонар)|сзади|rear|back|сбок|б�
  * kit:   массив блоков комплектации (нужен, чтобы понять, что искать)
  * Возвращает { photos, report }.
  */
-export async function assignPhotos(files, kit, { removeBg = false, tolerance = 38 } = {}) {
+export async function assignPhotos(files, kit, { removeBg = false, tolerance = 38, pinned = {} } = {}) {
   const used = new Set();
   const report = [];
 
@@ -42,11 +42,23 @@ export async function assignPhotos(files, kit, { removeBg = false, tolerance = 3
     return hit || null;
   };
 
+  // Закреплённые вручную фото занимают свои слоты первыми: имя файла из
+  // данные.txt важнее любых догадок по названию.
   const slots = {};
-  slots.front = take(FRONT_RE);
-  slots.rear = take(REAR_RE);
+  const fixed = new Set();
+  for (const [slot, name] of Object.entries(pinned)) {
+    const hit = files.find(f => f.name === name);
+    if (!hit) continue;
+    slots[slot] = hit;
+    used.add(hit.name);
+    fixed.add(slot);
+  }
+
+  if (!slots.front) slots.front = take(FRONT_RE);
+  if (!slots.rear) slots.rear = take(REAR_RE);
 
   for (let i = 0; i < 8; i++) {
+    if (slots[`kit${i + 1}`]) continue;
     const title = kit[i]?.title || '';
     const key = DETAIL_KEYS.find(k => k.match.test(title));
     slots[`kit${i + 1}`] = key ? take(key.file) : null;
@@ -76,7 +88,7 @@ export async function assignPhotos(files, kit, { removeBg = false, tolerance = 3
     report.push({
       slot,
       name: file.name,
-      status: guessed.has(slot) ? 'по остатку' : 'по имени',
+      status: fixed.has(slot) ? 'закреплено' : (guessed.has(slot) ? 'по остатку' : 'по имени'),
     });
   }
 

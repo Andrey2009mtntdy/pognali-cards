@@ -24,7 +24,7 @@ let logo = null;           // основной — чёрные буквы, по
 let logoDark = null;       // светлый вариант, для тёмной темы
 let redrawTimer = null;
 let backgrounds = [];      // [{ name, image }] — подложки из папки «фоны»
-let tinted = { key: null, canvas: null };       // перекрашенная подложка, чтобы не считать её заново
+let tinted = new Map();    // ключ «файл|акцент|красить» → перекрашенная подложка (карточек две)
 let tintedLogo = { key: null, canvas: null };   // то же для логотипа
 let catalog = [];          // [{ title, data }] — все модели из файла каталога
 let catalogPick = null;    // название выбранной модели, для подсветки в списке
@@ -224,13 +224,34 @@ function applyCatalogText(text, sourcePath) {
 function buildSlots() {
   const box = $('slots');
   box.innerHTML = '';
-  PHOTO_SLOTS.forEach(s => {
-    const b = document.createElement('button');
-    b.className = 'slot' + (photos[s.id] ? ' filled' : '') + (activeSlot === s.id ? ' active' : '');
-    b.textContent = s.label + (photos[s.id] ? ' ✓' : '');
-    b.onclick = () => { openEditor(s.id); buildSlots(); };
-    box.append(b);
+
+  // Две группы: что уйдёт на главную карточку, что на комплектацию.
+  [[1, 'Главная карточка'], [2, 'Карточка комплектации']].forEach(([card, title]) => {
+    const head = document.createElement('div');
+    head.className = 'slots-head';
+    head.textContent = title;
+    box.append(head);
+
+    PHOTO_SLOTS.filter(s => s.card === card).forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'slot' + (photos[s.id] ? ' filled' : '') + (activeSlot === s.id ? ' active' : '');
+      b.textContent = s.label + (photos[s.id] ? ' ✓' : '');
+      b.title = data.slotFiles?.[s.id] || 'фото не выбрано';
+      b.onclick = () => { openEditor(s.id); buildSlots(); };
+      box.append(b);
+    });
   });
+}
+
+// Тихо дописывает данные.txt в папку модели: закреплённые фото, фоны и прочие
+// настройки должны пережить закрытие программы без нажатия «Сохранить».
+let persistTimer = null;
+function persist() {
+  if (!folder) return;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    window.api.writeDataFile(folder, stringifyData(data)).catch(() => {});
+  }, 600);
 }
 
 function buildGallery() {
@@ -264,6 +285,11 @@ async function putInSlot(file, slot) {
   for (const [name, s] of Object.entries(slotOfFile)) if (s === slot) delete slotOfFile[name];
   slotOfFile[file.name] = slot;
 
+  // Закрепляем выбор за слотом — при следующем открытии папки фото встанет
+  // сюда же, а не туда, куда его отправит угадывание по имени файла.
+  if (!data.slotFiles) data.slotFiles = {};
+  data.slotFiles[slot] = file.name;
+
   // Новое фото в слоте — старая подгонка к нему не относится.
   if (data.transforms) data.transforms[slot] = { ...FLAT };
 
@@ -271,6 +297,29 @@ async function putInSlot(file, slot) {
   busy(false);
   drawEditor();
   scheduleRedraw();
+  persist();
+}
+
+// Своё фото под выбранный слот: файл копируется в папку модели, чтобы
+// в следующий раз он там был, и закрепляется за слотом.
+async function addPhotoToSlot() {
+  const picked = await window.api.addPhoto(folder);
+  if (!picked) return;
+
+  if (folder) files = await window.api.readFolder(folder);
+  else files = [...files.filter(f => f.name !== picked.name), picked];
+
+  const file = files.find(f => f.name === picked.name) || picked;
+  await putInSlot(file, activeSlot);
+
+  if (!picked.copied) toast('Папка модели не выбрана — фото не сохранится после закрытия', 'err');
+  else toast(`Фото «${picked.name}» → ${slotLabel(activeSlot)}`, 'ok');
+}
+
+function slotLabel(id) {
+  const s = PHOTO_SLOTS.find(x => x.id === id);
+  if (!s) return id;
+  return `${s.label} (${s.card === 1 ? 'главная' : 'комплектация'})`;
 }
 
 // Читает папку «фоны» заново — после запуска и после добавления своих файлов.
@@ -280,30 +329,35 @@ async function reloadBackgrounds() {
     name: f.name,
     image: await loadImage(f.dataUrl),
   })))).filter(b => b.image);
-  tinted = { key: null, canvas: null };   // кэш перекраски относится к прежним файлам
+  tinted.clear();   // кэш перекраски относится к прежним файлам
 }
 
 // Список подложек: «рисованный фон» плюс всё, что нашлось в папке «фоны».
+// Селектов два — у главной и у комплектации подложки независимы.
 function buildBackgrounds() {
-  const sel = $('f-background');
+  fillBackgroundSelect($('f-background'), data.background, 'Рисованный (без картинки)');
+  fillBackgroundSelect($('f-background2'), data.background2, 'Как на главной');
+}
+
+function fillBackgroundSelect(sel, value, emptyLabel) {
   sel.innerHTML = '';
 
-  const add = (value, text) => {
+  const add = (v, text) => {
     const o = document.createElement('option');
-    o.value = value;
+    o.value = v;
     o.textContent = text;
     sel.append(o);
   };
 
-  add('', 'Рисованный (без картинки)');
+  add('', emptyLabel);
   backgrounds.forEach(b => add(b.name, b.name.replace(/\.[^.]+$/, '')));
 
   // Файл из данные.txt мог не найтись — тогда честно показываем это,
   // а не молча подставляем другую подложку.
-  if (data.background && !backgrounds.some(b => b.name === data.background)) {
-    add(data.background, `${data.background} — файл не найден`);
+  if (value && !backgrounds.some(b => b.name === value)) {
+    add(value, `${value} — файл не найден`);
   }
-  sel.value = data.background || '';
+  sel.value = value || '';
 }
 
 function syncFormFromData() {
@@ -555,23 +609,26 @@ async function reloadIcons() {
 function scheduleRedraw() {
   clearTimeout(redrawTimer);
   redrawTimer = setTimeout(redraw, 120);
+  persist();   // правки полей и кадров тоже уходят в данные.txt сами
 }
 
 // Подложка под текущие настройки: выбранный файл, перекрашенный под акцент.
 // Перекраска идёт по полутора миллионам пикселей, поэтому результат держим
 // в кэше и пересчитываем только при смене фона или цвета.
-function currentBackground() {
-  const picked = backgrounds.find(b => b.name === data.background);
+function currentBackground(name = data.background) {
+  const picked = backgrounds.find(b => b.name === name);
   if (!picked) return null;
 
   const key = `${picked.name}|${data.accent}|${data.tintBg ? 1 : 0}`;
-  if (tinted.key === key) return tinted.canvas;
+  const hit = tinted.get(key);
+  if (hit) return hit;
 
-  tinted = {
-    key,
-    canvas: data.tintBg ? recolorAccent(picked.image, data.accent) : picked.image,
-  };
-  return tinted.canvas;
+  const canvas = data.tintBg ? recolorAccent(picked.image, data.accent) : picked.image;
+  // Кэш держим маленьким: карточек две, больше двух подложек одновременно
+  // не нужно, а каждая — полтора миллиона перекрашенных пикселей.
+  if (tinted.size > 3) tinted.clear();
+  tinted.set(key, canvas);
+  return canvas;
 }
 
 // Красное «РФ» и полоски логотипа тоже красим акцентом — как мазки на фоне.
@@ -588,9 +645,13 @@ function currentLogo() {
 function redraw() {
   const payload = { ...data, photos };
   const background = currentBackground();
+  // У комплектации может быть своя подложка. Пусто — значит «как на главной».
+  const background2 = data.background2
+    ? currentBackground(data.background2)
+    : background;
   const tintedLogoImg = currentLogo();
   renderCard1($('c1'), payload, { logo: tintedLogoImg, logoDark, background });
-  renderCard2($('c2'), payload, { logo: tintedLogoImg, logoDark, background });
+  renderCard2($('c2'), payload, { logo: tintedLogoImg, logoDark, background: background2 });
   $('btn-save').disabled = !(data.brand || data.model);
 }
 
@@ -624,11 +685,27 @@ async function loadFolder(dir) {
   }
 
   busy(true, 'Раскладываю фото…');
-  const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance });
+  const pinned = data.slotFiles || {};
+  const savedTransforms = data.transforms || {};
+  const res = await assignPhotos(files, data.kit, {
+    removeBg: data.removeBg, tolerance: data.tolerance, pinned,
+  });
   photos = res.photos;
   slotOfFile = {};
-  data.transforms = {};   // подгонка кадров относится к прежним фото
   res.report.forEach(r => { if (r.name) slotOfFile[r.name] = r.slot; });
+
+  // Кадрирование оставляем только там, где в слоте то же самое фото, что и
+  // в прошлый раз: к новому снимку старая подгонка не относится.
+  const keptTransforms = {};
+  data.slotFiles = {};
+  res.report.forEach(r => {
+    if (!r.name) return;
+    data.slotFiles[r.slot] = r.name;
+    if (pinned[r.slot] === r.name && savedTransforms[r.slot]) {
+      keptTransforms[r.slot] = savedTransforms[r.slot];
+    }
+  });
+  data.transforms = keptTransforms;
 
   syncFormFromData();
   redraw();
@@ -636,7 +713,8 @@ async function loadFolder(dir) {
   busy(false);
 
   const named = res.report.filter(r => r.status === 'по имени').length;
-  toast(`Фото: ${files.length}. Разложено по именам: ${named}`, 'ok');
+  const fixed = res.report.filter(r => r.status === 'закреплено').length;
+  toast(`Фото: ${files.length}. Закреплённых: ${fixed}, по именам: ${named}`, 'ok');
 }
 
 // ── Сохранение ───────────────────────────────────────────────────────────────
@@ -688,7 +766,11 @@ async function batch() {
       files = await window.api.readFolder(d.path);
       if (!files.length) { skipped++; continue; }
 
-      const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance });
+      // Закреплённые фото уважаем и в пакетной обработке: иначе карточка
+      // вышла бы не такой, какой её собрали руками.
+      const res = await assignPhotos(files, data.kit, {
+        removeBg: data.removeBg, tolerance: data.tolerance, pinned: data.slotFiles || {},
+      });
       photos = res.photos;
       redraw();
       await new Promise(r => setTimeout(r, 30));  // даём кадру дорисоваться
@@ -724,6 +806,13 @@ bindField('f-logo2', 'logoOnSecond');
 $('f-background').addEventListener('change', (e) => {
   data.background = e.target.value;
   scheduleRedraw();
+  persist();
+});
+
+$('f-background2').addEventListener('change', (e) => {
+  data.background2 = e.target.value;
+  scheduleRedraw();
+  persist();
 });
 
 $('f-tintbg').addEventListener('change', (e) => {
@@ -751,7 +840,7 @@ $('f-removebg').addEventListener('change', async (e) => {
   data.removeBg = e.target.checked;
   if (files.length) {
     busy(true, 'Пересобираю фото…');
-    const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance });
+    const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance, pinned: data.slotFiles || {} });
     photos = res.photos;
     busy(false);
   }
@@ -767,7 +856,7 @@ $('f-tol').addEventListener('input', (e) => {
 $('f-tol').addEventListener('change', async () => {
   if (!files.length || !data.removeBg) return;
   busy(true, 'Пересобираю фото…');
-  const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance });
+  const res = await assignPhotos(files, data.kit, { removeBg: data.removeBg, tolerance: data.tolerance, pinned: data.slotFiles || {} });
   photos = res.photos;
   busy(false);
   scheduleRedraw();
@@ -775,6 +864,7 @@ $('f-tol').addEventListener('change', async () => {
 
 $('btn-folder').onclick = openFolder;
 $('btn-batch').onclick = batch;
+$('btn-add-photo').onclick = addPhotoToSlot;
 $('btn-save').onclick = () => saveCards();
 
 async function loadCatalogFile() {

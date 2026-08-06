@@ -159,7 +159,17 @@ export function parseData(text) {
   // в файле нет, ключ не возвращаем вовсе: иначе выбор модели из каталога
   // (где про фон ничего не сказано) сбрасывал бы выбранную подложку.
   if ('фон' in fields) out.background = fields['фон'];
+  if ('фон 2' in fields) out.background2 = fields['фон 2'];
   if ('красить фон' in fields) out.tintBg = /^(да|yes|1|true)$/i.test(fields['красить фон']);
+
+  // Какой файл за каким слотом закреплён: «Фото front: перед.jpg». Нужно,
+  // чтобы ручная расстановка пережила закрытие программы.
+  const slotFiles = {};
+  for (const [key, value] of Object.entries(fields)) {
+    const m = key.match(/^фото\s+(front|rear|kit[1-8])$/);
+    if (m && value) slotFiles[m[1]] = value;
+  }
+  if (Object.keys(slotFiles).length) out.slotFiles = slotFiles;
 
   return out;
 }
@@ -172,6 +182,7 @@ export function stringifyData(d) {
     `Версия: ${d.version || ''}`,
     `Цвет оформления: ${d.accent || ORANGE}`,
     `Фон: ${d.background || ''}`,
+    `Фон 2: ${d.background2 || ''}`,
     `Красить фон: ${d.tintBg ? 'да' : 'нет'}`,
     `Тёмная тема: ${d.theme === 'dark' ? 'да' : 'нет'}`,
     `Удалять фон: ${d.removeBg ? 'да' : 'нет'}`,
@@ -197,6 +208,14 @@ export function stringifyData(d) {
   (d.kit || []).forEach((k, i) => {
     lines.push(`${i + 1}. ${k.title || ''}${k.note ? ` | ${k.note}` : ' |'}`);
   });
+
+  // Какое фото в каком слоте — иначе при следующем открытии папки ручная
+  // расстановка потерялась бы и всё разложилось заново по именам файлов.
+  const pinned = Object.entries(d.slotFiles || {}).filter(([, name]) => name);
+  if (pinned.length) {
+    lines.push('');
+    for (const [slot, name] of pinned) lines.push(`Фото ${slot}: ${name}`);
+  }
 
   // Ручная подгонка кадров — чтобы при следующем открытии папки всё осталось как настроил.
   const moved = Object.entries(d.transforms || {})
@@ -241,7 +260,9 @@ export function emptyData() {
     brand: '', model: '', version: '',
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: false, tolerance: 38,
     background: 'горы', tintBg: true,   // подложка с горами — базовый вариант
+    background2: '',                    // пусто = вторая карточка берёт фон первой
     transforms: {},
+    slotFiles: {},                      // слот → имя файла, закреплённого вручную
     battery: { ...BATTERY_PRESET },
     specs: SPEC_PRESETS.map(s => ({ ...s })),
     footer: FOOTER_PRESETS.map(f => ({ ...f })),

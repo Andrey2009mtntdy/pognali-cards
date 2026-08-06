@@ -140,6 +140,41 @@ ipcMain.handle('read-folder', async (_e, dir) => {
   return out;
 });
 
+// Своё фото под конкретный слот. Файл копируем в папку модели: иначе при
+// следующем открытии папки его там не будет и слот окажется пустым.
+ipcMain.handle('add-photo', async (_e, dir) => {
+  const res = await dialog.showOpenDialog(win, {
+    title: 'Выбери фото для слота',
+    properties: ['openFile'],
+    filters: [{ name: 'Картинки', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] }],
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+
+  const src = res.filePaths[0];
+  const ext = path.extname(src);
+  const base = path.basename(src, ext);
+
+  // Папки модели может не быть — тогда просто отдаём картинку в окно,
+  // без копирования: слот заполнится, но привязка не переживёт перезапуск.
+  const buf = await fs.readFile(src);
+  const mime = ext.toLowerCase() === '.jpg' ? 'jpeg' : ext.toLowerCase().replace('.', '');
+  const payload = {
+    name: base + ext,
+    base,
+    dataUrl: `data:image/${mime};base64,${buf.toString('base64')}`,
+    copied: false,
+  };
+  if (!dir) return payload;
+
+  let target = path.join(dir, base + ext);
+  for (let n = 2; await exists(target); n++) target = path.join(dir, `${base} (${n})${ext}`);
+  await fs.copyFile(src, target);
+  payload.name = path.basename(target);
+  payload.base = path.basename(target, ext);
+  payload.copied = true;
+  return payload;
+});
+
 // Читаем данные.txt, если он лежит рядом с фото.
 ipcMain.handle('read-data-file', async (_e, dir) => {
   for (const name of ['данные.txt', 'data.txt']) {
