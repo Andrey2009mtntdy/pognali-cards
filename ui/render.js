@@ -334,7 +334,7 @@ export function renderCard2(canvas, data, assets = {}) {
   // Верхние надписи всегда по светлому фону — держим их тёмными.
   // Бренд тем же начертанием, что и на главной, только во всю верхнюю полосу.
   fitText(ctx, data.brand || '', CARD2.brand, {
-    weight: 800, color: INK, maxSize: 70, tracking: 0, uppercase: true,
+    weight: 800, color: INK, maxSize: 62, tracking: 0, uppercase: true,
     italic: true, family: 'Euro, Square, MontEB', squeeze: 1,
   });
   fitTwoTone(ctx, data.model || '', data.version || '', CARD2.model, {
@@ -349,11 +349,11 @@ export function renderCard2(canvas, data, assets = {}) {
 
   fitText(ctx, 'КОМПЛЕКТАЦИЯ', {
     x: CARD2.title.x, y: CARD2.title.y, w: CARD2.title.w, h: CARD2.title.h * 0.48,
-  }, { weight: 900, color: P.accentText, italic: true, align: 'right', maxSize: 62, uppercase: true });
+  }, { weight: 900, color: P.accentText, italic: true, align: 'right', maxSize: 64, uppercase: true, squeeze: 0.79 });
 
   fitText(ctx, 'И ОСОБЕННОСТИ', {
     x: CARD2.title.x, y: CARD2.title.y + CARD2.title.h * 0.52, w: CARD2.title.w, h: CARD2.title.h * 0.48,
-  }, { weight: 900, color: INK, italic: true, align: 'right', maxSize: 54, uppercase: true });
+  }, { weight: 900, color: INK, italic: true, align: 'right', maxSize: 64, uppercase: true, squeeze: 0.79 });
 
   drawKitGrid(ctx, data, P);
 
