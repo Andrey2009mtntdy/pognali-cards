@@ -347,11 +347,13 @@ export function renderCard2(canvas, data, assets = {}) {
     ctx.fillRect(CARD2.divider.x, CARD2.divider.y, 3, CARD2.divider.h);
   }
 
-  fitText(ctx, 'КОМПЛЕКТАЦИЯ', CARD2.title,
-    { weight: 900, color: P.accentText, italic: true, align: 'right', maxSize: 54, uppercase: true });
+  fitText(ctx, 'КОМПЛЕКТАЦИЯ', {
+    x: CARD2.title.x, y: CARD2.title.y, w: CARD2.title.w, h: CARD2.title.h * 0.48,
+  }, { weight: 900, color: P.accentText, italic: true, align: 'right', maxSize: 54, uppercase: true });
 
-  fitText(ctx, 'И ОСОБЕННОСТИ', CARD2.title2,
-    { weight: 900, color: INK, italic: true, align: 'right', maxSize: 54, uppercase: true });
+  fitText(ctx, 'И ОСОБЕННОСТИ', {
+    x: CARD2.title.x, y: CARD2.title.y + CARD2.title.h * 0.52, w: CARD2.title.w, h: CARD2.title.h * 0.48,
+  }, { weight: 900, color: INK, italic: true, align: 'right', maxSize: 54, uppercase: true });
 
   drawKitGrid(ctx, data, P);
 
