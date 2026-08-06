@@ -146,9 +146,10 @@ export function parseData(text) {
     accent: /^#[0-9a-f]{3,8}$/i.test(accentRaw) ? accentRaw : (accentRaw ? colorByName(accentRaw) : ORANGE),
     theme: /^(да|yes|1|true|тёмн|темн)/i.test(fields['тёмная тема'] || fields['темная тема'] || '') ? 'dark' : 'light',
     removeBg: /^(да|yes|1|true)$/i.test(fields['удалять фон'] || 'да'),
-    logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || ''),
-    // По умолчанию линия есть: в старых файлах строки нет, а раньше её рисовали всегда.
-    divider: !/^(нет|no|0|false)$/i.test(fields['разделитель'] || 'да'),
+    // По образцу босса: на второй карточке логотип снизу есть, полосы между
+    // колонками нет — поэтому у обоих значения по умолчанию перевёрнуты.
+    logoOnSecond: /^(да|yes|1|true)$/i.test(fields['логотип на второй'] || 'да'),
+    divider: /^(да|yes|1|true)$/i.test(fields['разделитель'] || 'нет'),
     corners: /^(да|yes|1|true)$/i.test(fields['уголки'] || ''),
     battery,
     footer,
@@ -261,10 +262,10 @@ export function parseCatalog(text) {
 export function emptyData() {
   return {
     brand: '', model: '', version: '',
-    accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: false, corners: false, tolerance: 38,
+    accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: true, corners: false, tolerance: 38,
     background: 'горы', tintBg: true,   // подложка с горами — базовый вариант
     background2: '',                    // пусто = вторая карточка берёт фон первой
-    divider: true,                      // полоса между названием и заголовком 2-й карточки
+    divider: false,                     // полоса между названием и заголовком 2-й карточки
     transforms: {},
     slotFiles: {},                      // слот → имя файла, закреплённого вручную
     battery: { ...BATTERY_PRESET },
