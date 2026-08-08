@@ -166,6 +166,19 @@ label > select { width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 13p
 .catalog-item:hover { border-color: rgba(249,115,22,.5); background: rgba(249,115,22,.08); }
 .catalog-item.active { border-color: var(--accent); color: #ffb27a; background: rgba(249,115,22,.14); }
 .catalog-item .sub { display: block; font: 11px 'MontM', sans-serif; color: var(--dim); margin-top: 2px; }
+
+/* ── Библиотека «Мои модели» ── */
+/* Свои модели и каталог из файла живут в одной колонке, поэтому библиотеке
+   отдана верхняя половина с ограниченной высотой: список каталога под ней
+   не должен уезжать за экран. */
+.lib-actions { margin: 0 0 8px; gap: 6px; }
+.lib-list { flex: 0 1 auto; max-height: 42vh; margin-bottom: 4px; }
+.lib-empty { font: 11px 'MontM', sans-serif; color: var(--dim); padding: 6px 2px; line-height: 1.5; }
+.drawer-sep {
+  margin: 10px 0 7px; padding-top: 10px; border-top: 1px solid var(--line);
+  font: 10px 'MontB', sans-serif; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim);
+}
 .catalog-empty { font-size: 12px; color: var(--dim); padding: 6px 2px; }
 
 /* ── Слоты и галерея ── */
@@ -274,6 +287,15 @@ label > select { width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 13p
   border-radius: 50%; animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Своё окно ввода: встроенный prompt() в Electron не работает */
+.ask-box {
+  width: min(420px, 90vw); padding: 18px;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+.ask-title { font: 13px 'MontB', sans-serif; color: var(--text); margin-bottom: 10px; }
+.ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 5px; }

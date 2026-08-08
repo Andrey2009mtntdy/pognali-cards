@@ -263,7 +263,7 @@ export function emptyData() {
   return {
     brand: '', model: '', version: '',
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: true, corners: false, tolerance: 38,
-    background: 'горы', tintBg: true,   // подложка с горами — базовый вариант
+    background: 'горы.png', tintBg: true,   // комплектная подложка — имя вместе с расширением
     background2: '',                    // пусто = вторая карточка берёт фон первой
     divider: false,                     // полоса между названием и заголовком 2-й карточки
     transforms: {},

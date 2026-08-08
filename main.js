@@ -41,6 +41,9 @@ function buildMenu() {
       label: 'Файл',
       submenu: [
         { label: 'Загрузить каталог моделей…', accelerator: 'CmdOrCtrl+O', click: () => tell('catalog') },
+        { label: 'Новая модель…', accelerator: 'CmdOrCtrl+N', click: () => tell('new-model') },
+        { label: 'Открыть папку с моделями', click: () => tell('open-library') },
+        { type: 'separator' },
         { label: 'Добавить фон…', accelerator: 'CmdOrCtrl+Shift+O', click: () => tell('add-background') },
         { label: 'Открыть папку с фонами', click: () => tell('open-backgrounds') },
         { label: 'Открыть папку со значками', click: () => tell('open-icons') },
@@ -229,6 +232,98 @@ ipcMain.handle('list-model-folders', async (_e, root) => {
   }));
 });
 
+
+// ── Мои модели ───────────────────────────────────────────────────────────────
+// Библиотека моделей: у каждой своя папка рядом с программой. Внутри лежат
+// «данные.txt» и все фотографии, поэтому модель полностью самодостаточна —
+// открыл её в следующий раз, и всё на месте: тексты, фото, кадрирование.
+function libraryDir() {
+  return path.join(userDir(), 'Мои модели');
+}
+
+// Имя папки не должно ронять запись на диск: в Windows часть знаков запрещена.
+function safeName(name) {
+  return String(name || '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+ipcMain.handle('list-my-models', async () => {
+  const dir = libraryDir();
+  await fs.mkdir(dir, { recursive: true });
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  const out = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const modelDir = path.join(dir, e.name);
+    let photos = 0;
+    let changed = 0;
+    try {
+      const files = await fs.readdir(modelDir, { withFileTypes: true });
+      photos = files.filter(f => f.isFile() && IMAGE_EXT.has(path.extname(f.name).toLowerCase())).length;
+      const st = await fs.stat(modelDir);
+      changed = st.mtimeMs;
+    } catch { /* папку могли удалить прямо сейчас */ }
+    out.push({ name: e.name, path: modelDir, photos, changed });
+  }
+  out.sort((a, b) => b.changed - a.changed);
+  return out;
+});
+
+ipcMain.handle('create-model', async (_e, name) => {
+  const clean = safeName(name) || 'Новая модель';
+  const dir = libraryDir();
+  await fs.mkdir(dir, { recursive: true });
+
+  // Одноимённую папку не перетираем: рядом появится «… (2)».
+  let target = path.join(dir, clean);
+  for (let n = 2; await exists(target); n++) target = path.join(dir, `${clean} (${n})`);
+  await fs.mkdir(target, { recursive: true });
+  return { name: path.basename(target), path: target };
+});
+
+ipcMain.handle('duplicate-model', async (_e, srcPath, newName) => {
+  const dir = libraryDir();
+  const clean = safeName(newName) || `${path.basename(srcPath)} копия`;
+  let target = path.join(dir, clean);
+  for (let n = 2; await exists(target); n++) target = path.join(dir, `${clean} (${n})`);
+
+  // Копируем папку целиком: и данные, и фотографии — дубль сразу рабочий.
+  await fs.cp(srcPath, target, { recursive: true });
+  return { name: path.basename(target), path: target };
+});
+
+ipcMain.handle('delete-model', async (_e, modelPath) => {
+  // Удаление необратимо, поэтому спрашиваем прямо здесь, у окна программы.
+  const res = await dialog.showMessageBox(win, {
+    type: 'warning',
+    buttons: ['Удалить', 'Отмена'],
+    defaultId: 1,
+    cancelId: 1,
+    message: `Удалить модель «${path.basename(modelPath)}»?`,
+    detail: 'Папка со всеми фотографиями и настройками будет удалена безвозвратно.',
+  });
+  if (res.response !== 0) return false;
+
+  await fs.rm(modelPath, { recursive: true, force: true });
+  return true;
+});
+
+ipcMain.handle('rename-model', async (_e, modelPath, newName) => {
+  const clean = safeName(newName);
+  if (!clean) return null;
+  const target = path.join(path.dirname(modelPath), clean);
+  if (target === modelPath) return { name: clean, path: modelPath };
+  if (await exists(target)) return null;
+  await fs.rename(modelPath, target);
+  return { name: clean, path: target };
+});
+
+ipcMain.handle('open-library', async () => {
+  const dir = libraryDir();
+  await fs.mkdir(dir, { recursive: true });
+  shell.openPath(dir);
+  return dir;
+});
 
 // ── Иконки-картинки ──────────────────────────────────────────────────────────
 // Если в папке «иконки» лежит файл с именем характеристики, программа рисует

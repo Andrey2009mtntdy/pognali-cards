@@ -29,9 +29,19 @@
        всплывающая панель: кнопкой ☰ она сворачивается, остальное раздвигается. -->
   <aside id="drawer" class="pane pane-models">
     <div class="drawer-head">
-      <span>Модели</span>
+      <span>Мои модели</span>
       <button id="drawer-close" class="icon-btn" title="Свернуть список">‹</button>
     </div>
+
+    <!-- Библиотека: каждая модель живёт в своей папке и помнит всё сама -->
+    <div class="row lib-actions">
+      <button id="btn-new-model" class="btn btn-mini btn-accent">＋ Новая</button>
+      <button id="btn-dup-model" class="btn btn-mini" disabled>Дублировать</button>
+      <button id="btn-del-model" class="btn btn-mini" disabled>Удалить</button>
+    </div>
+    <div id="my-models" class="catalog-list lib-list"></div>
+
+    <div class="drawer-sep">Каталог из файла</div>
     <input id="catalog-search" placeholder="поиск по названию">
     <div id="catalog-list" class="catalog-list"></div>
     <div class="drawer-foot">
@@ -153,6 +163,18 @@
   <div class="overlay-box">
     <div class="spinner"></div>
     <div id="overlay-text">Работаю…</div>
+  </div>
+</div>
+
+<!-- Окошко ввода названия: встроенный prompt() в Electron не работает -->
+<div id="ask" class="overlay hidden">
+  <div class="ask-box">
+    <div id="ask-title" class="ask-title">Название модели</div>
+    <input id="ask-input" placeholder="KUGOO WISH 02 PRO" autocomplete="off">
+    <div class="ask-actions">
+      <button id="ask-cancel" class="btn btn-mini">Отмена</button>
+      <button id="ask-ok" class="btn btn-mini btn-accent">Готово</button>
+    </div>
   </div>
 </div>
 

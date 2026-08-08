@@ -28,6 +28,7 @@ let tinted = new Map();    // ключ «файл|акцент|красить» 
 let tintedLogo = { key: null, canvas: null };   // то же для логотипа
 let catalog = [];          // [{ title, data }] — все модели из файла каталога
 let catalogPick = null;    // название выбранной модели, для подсветки в списке
+let myModels = [];         // [{ name, path, photos }] — библиотека своих моделей
 
 // ── Утилиты интерфейса ───────────────────────────────────────────────────────
 function toast(text, kind = '') {
@@ -184,6 +185,147 @@ function pickCatalogItem(item) {
   $('current-model').textContent = item.title;
   $('current-model').classList.remove('hidden');
   toast(`Модель: ${item.title}`, 'ok');
+}
+
+// Спрашивает строку своим окном: встроенный prompt() Electron не поддерживает.
+// Возвращает введённое значение или null, если человек передумал.
+function askName(title, value = '') {
+  return new Promise(resolve => {
+    const box = $('ask');
+    const input = $('ask-input');
+    $('ask-title').textContent = title;
+    input.value = value;
+    box.classList.remove('hidden');
+    input.focus();
+    input.select();
+
+    const done = (result) => {
+      box.classList.add('hidden');
+      input.onkeydown = null;
+      $('ask-ok').onclick = null;
+      $('ask-cancel').onclick = null;
+      resolve(result);
+    };
+
+    $('ask-ok').onclick = () => done(input.value.trim() || null);
+    $('ask-cancel').onclick = () => done(null);
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') done(input.value.trim() || null);
+      if (e.key === 'Escape') done(null);
+    };
+  });
+}
+
+// ── Библиотека «Мои модели» ──────────────────────────────────────────────────
+// Модель = папка рядом с программой: внутри «данные.txt» и все фотографии.
+// Открыл модель в следующий раз — тексты, фото и кадрирование на месте, потому
+// что всё пишется в эту папку само, без кнопки «сохранить».
+async function reloadMyModels() {
+  myModels = await window.api.listMyModels();
+  buildMyModels();
+}
+
+function buildMyModels() {
+  const box = $('my-models');
+  box.innerHTML = '';
+
+  if (!myModels.length) {
+    box.innerHTML = '<div class="lib-empty">Пока пусто. Нажми «＋ Новая» — программа заведёт папку, и всё, что наберёшь, сохранится в ней само.</div>';
+  }
+
+  myModels.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'catalog-item' + (folder === m.path ? ' active' : '');
+    b.append(m.name);
+
+    const sub = document.createElement('span');
+    sub.className = 'sub';
+    sub.textContent = m.photos ? `${m.photos} фото` : 'без фото';
+    b.append(sub);
+
+    b.title = m.path;
+    b.onclick = () => openMyModel(m);
+    box.append(b);
+  });
+
+  const has = myModels.some(m => m.path === folder);
+  $('btn-dup-model').disabled = !has;
+  $('btn-del-model').disabled = !has;
+}
+
+async function openMyModel(m) {
+  await loadFolder(m.path);
+  $('current-model').textContent = m.name;
+  $('current-model').classList.remove('hidden');
+  buildMyModels();
+}
+
+// Новая модель: чистая карточка и своя папка. Имя спрашиваем сразу — оно же
+// станет названием папки, и по нему модель потом искать в списке.
+async function newModel() {
+  const name = await askName('Название модели (например «KUGOO WISH 02 PRO»)');
+  if (!name) return;
+
+  const created = await window.api.createModel(name);
+  if (!created) { toast('Не удалось создать папку', 'err'); return; }
+
+  // Чистая карточка: поля из названия папки, всё остальное — по умолчанию.
+  const parts = created.name.split(/\s+/).filter(Boolean);
+  data = {
+    ...emptyData(),
+    brand: (parts[0] || '').toUpperCase(),
+    model: (parts[1] || '').toUpperCase(),
+    version: (parts.slice(2).join(' ') || '').toUpperCase(),
+  };
+  photos = {};
+  files = [];
+  slotOfFile = {};
+  folder = created.path;
+
+  $('folder-name').textContent = created.path;
+  $('current-model').textContent = created.name;
+  $('current-model').classList.remove('hidden');
+
+  syncFormFromData();
+  buildSlots();
+  buildGallery();
+  redraw();
+  await window.api.writeDataFile(folder, stringifyData(data));
+  await reloadMyModels();
+  toast(`Модель «${created.name}» создана`, 'ok');
+}
+
+// Дубль удобен для соседних версий одной модели: «WISH 02» и «WISH 02 PRO»
+// отличаются парой строк, а фотографии у них общие.
+async function duplicateModel() {
+  const src = myModels.find(m => m.path === folder);
+  if (!src) return;
+
+  const name = await askName('Название копии', `${src.name} копия`);
+  if (!name) return;
+
+  busy(true, 'Копирую модель…');
+  const made = await window.api.duplicateModel(src.path, name);
+  busy(false);
+  if (!made) { toast('Не получилось скопировать', 'err'); return; }
+
+  await reloadMyModels();
+  await openMyModel(made);
+  toast(`Копия «${made.name}» готова`, 'ok');
+}
+
+async function deleteModel() {
+  const cur = myModels.find(m => m.path === folder);
+  if (!cur) return;
+
+  const done = await window.api.deleteModel(cur.path);
+  if (!done) return;   // отменили в окне подтверждения
+
+  folder = null;
+  $('folder-name').textContent = 'Папка не выбрана';
+  $('current-model').classList.add('hidden');
+  await reloadMyModels();
+  toast(`Модель «${cur.name}» удалена`, 'ok');
 }
 
 // ── Колонка со списком моделей ───────────────────────────────────────────────
@@ -867,6 +1009,9 @@ $('f-tol').addEventListener('change', async () => {
 $('btn-folder').onclick = openFolder;
 $('btn-batch').onclick = batch;
 $('btn-add-photo').onclick = addPhotoToSlot;
+$('btn-new-model').onclick = newModel;
+$('btn-dup-model').onclick = duplicateModel;
+$('btn-del-model').onclick = deleteModel;
 $('btn-save').onclick = () => saveCards();
 
 async function loadCatalogFile() {
@@ -911,6 +1056,8 @@ window.api.onMenu((action) => {
   }
   if (action === 'open-icons') { window.api.openIcons(); return; }
   if (action === 'open-backgrounds') window.api.openBackgrounds();
+  if (action === 'open-library') window.api.openLibrary();
+  if (action === 'new-model') newModel();
   if (action === 'folder') openFolder();
   if (action === 'batch') batch();
   if (action === 'drawer') showDrawer(!drawerOpen());
@@ -930,13 +1077,20 @@ window.api.onMenu((action) => {
   // Подложек может не быть вовсе — тогда renderCard1 рисует фон сам.
   await reloadBackgrounds();
   await reloadIcons();   // картинки из папки «иконки», если их туда положили
-  if (!data.background && backgrounds.length) data.background = backgrounds[0].name;
+  // Выбранной подложки может не оказаться на диске (первый запуск, файл
+  // переименовали) — тогда молча берём первую комплектную, иначе карточка
+  // откроется с рисованным фоном, хотя человек ничего не менял.
+  if (backgrounds.length && !backgrounds.some(b => b.name === data.background)) {
+    data.background = backgrounds[0].name;
+  }
   syncFormFromData();
   redraw();
   drawEditor();
 
   // Каталог с прошлого запуска подхватываем молча: если его нет — просто
   // останется приглашение загрузить файл.
+  await reloadMyModels();   // библиотека своих моделей
+
   const saved = await window.api.loadCatalog();
   if (saved) applyCatalogText(saved.text, saved.path);
   else buildCatalog();

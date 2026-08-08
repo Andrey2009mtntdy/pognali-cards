@@ -17,6 +17,15 @@ contextBridge.exposeInMainWorld('api', {
   chooseCatalog:    ()            => ipcRenderer.invoke('choose-catalog'),
   loadCatalog:      ()            => ipcRenderer.invoke('load-catalog'),
   addPhoto:         (dir)         => ipcRenderer.invoke('add-photo', dir),
+
+  // Библиотека моделей: каждая модель — своя папка с фото и настройками.
+  listMyModels:     ()            => ipcRenderer.invoke('list-my-models'),
+  createModel:      (name)        => ipcRenderer.invoke('create-model', name),
+  duplicateModel:   (dir, name)   => ipcRenderer.invoke('duplicate-model', dir, name),
+  deleteModel:      (dir)         => ipcRenderer.invoke('delete-model', dir),
+  renameModel:      (dir, name)   => ipcRenderer.invoke('rename-model', dir, name),
+  openLibrary:      ()            => ipcRenderer.invoke('open-library'),
+
   listIcons:        ()            => ipcRenderer.invoke('list-icons'),
   openIcons:        ()            => ipcRenderer.invoke('open-icons-folder'),
 
