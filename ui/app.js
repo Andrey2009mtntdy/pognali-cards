@@ -2,7 +2,7 @@
 
 import { renderCard1, renderCard2, canvasToDataUrl } from './render.js';
 import { assignPhotos } from './photos.js';
-import { parseData, stringifyData, emptyData, parseCatalog } from './parse.js';
+import { parseData, stringifyData, emptyData } from './parse.js';
 import { PHOTO_SLOTS, CARD_W, CARD_H, ORANGE, slotFrame } from './layout.js';
 import { ICON_NAMES, loadImage, fontsReady, cutBackground, placement, drawPlaced, recolorAccent, setIconImages } from './draw.js';
 
@@ -26,8 +26,6 @@ let redrawTimer = null;
 let backgrounds = [];      // [{ name, image }] — подложки из папки «фоны»
 let tinted = new Map();    // ключ «файл|акцент|красить» → перекрашенная подложка (карточек две)
 let tintedLogo = { key: null, canvas: null };   // то же для логотипа
-let catalog = [];          // [{ title, data }] — все модели из файла каталога
-let catalogPick = null;    // название выбранной модели, для подсветки в списке
 let myModels = [];         // [{ name, path, photos }] — библиотека своих моделей
 
 // ── Утилиты интерфейса ───────────────────────────────────────────────────────
@@ -133,60 +131,6 @@ function buildKit() {
   });
 }
 
-// ── Каталог моделей ──────────────────────────────────────────────────────────
-// Выбор модели заполняет все текстовые поля разом. Фотографии и их подгонку
-// не трогаем: человек обычно сначала открывает папку с фото, а уже потом
-// выбирает модель — обнулять его работу здесь было бы обидно.
-function buildCatalog() {
-  const box = $('catalog-list');
-  const query = $('catalog-search').value.trim().toLowerCase();
-  box.innerHTML = '';
-
-  if (!catalog.length) {
-    box.innerHTML = '<div class="catalog-empty">Каталог не загружен. Нажми «Загрузить каталог» и укажи txt-файл со списком моделей.</div>';
-    return;
-  }
-
-  const shown = query
-    ? catalog.filter(it => it.title.toLowerCase().includes(query))
-    : catalog;
-
-  if (!shown.length) {
-    box.innerHTML = '<div class="catalog-empty">Ничего не найдено.</div>';
-    return;
-  }
-
-  shown.forEach(item => {
-    const b = document.createElement('button');
-    b.className = 'catalog-item' + (catalogPick === item.title ? ' active' : '');
-    b.innerHTML = '';
-    b.append(item.title);
-
-    const sub = [item.data.battery?.value, item.data.specs?.[0]?.value && `${item.data.specs[0].value} ${item.data.specs[0].unit || ''}`.trim()]
-      .filter(Boolean).join(' · ');
-    if (sub) {
-      const s = document.createElement('span');
-      s.className = 'sub';
-      s.textContent = sub;
-      b.append(s);
-    }
-
-    b.onclick = () => pickCatalogItem(item);
-    box.append(b);
-  });
-}
-
-function pickCatalogItem(item) {
-  catalogPick = item.title;
-  data = { ...data, ...item.data, transforms: data.transforms, tolerance: data.tolerance };
-  syncFormFromData();
-  buildCatalog();          // подсветить выбранный пункт
-  redraw();
-  $('current-model').textContent = item.title;
-  $('current-model').classList.remove('hidden');
-  toast(`Модель: ${item.title}`, 'ok');
-}
-
 // Спрашивает строку своим окном: встроенный prompt() Electron не поддерживает.
 // Возвращает введённое значение или null, если человек передумал.
 function askName(title, value = '') {
@@ -227,13 +171,17 @@ async function reloadMyModels() {
 
 function buildMyModels() {
   const box = $('my-models');
+  const query = $('catalog-search').value.trim().toLowerCase();
+  const shown = query ? myModels.filter(m => m.name.toLowerCase().includes(query)) : myModels;
   box.innerHTML = '';
 
-  if (!myModels.length) {
+  if (query && !shown.length) {
+    box.innerHTML = '<div class="lib-empty">Ничего не найдено.</div>';
+  } else if (!myModels.length) {
     box.innerHTML = '<div class="lib-empty">Пока пусто. Нажми «＋ Новая» — программа заведёт папку, и всё, что наберёшь, сохранится в ней само.</div>';
   }
 
-  myModels.forEach(m => {
+  shown.forEach(m => {
     const b = document.createElement('button');
     b.className = 'catalog-item' + (folder === m.path ? ' active' : '');
     b.append(m.name);
@@ -255,6 +203,7 @@ function buildMyModels() {
 
 async function openMyModel(m) {
   await loadFolder(m.path);
+  window.api.rememberModel(m.path).catch(() => {});
   $('current-model').textContent = m.name;
   $('current-model').classList.remove('hidden');
   buildMyModels();
@@ -349,20 +298,6 @@ function modelsWord(n) {
   return 'моделей';
 }
 
-function applyCatalogText(text, sourcePath) {
-  const items = parseCatalog(text);
-  if (!items.length) {
-    toast('В файле не нашлось ни одной модели', 'err');
-    return false;
-  }
-  catalog = items;
-  catalogPick = null;
-  $('catalog-name').textContent = `${items.length} ${modelsWord(items.length)}`;
-  $('catalog-name').title = sourcePath || '';
-  buildCatalog();
-  return true;
-}
-
 function buildSlots() {
   const box = $('slots');
   box.innerHTML = '';
@@ -440,6 +375,7 @@ async function putInSlot(file, slot) {
   drawEditor();
   scheduleRedraw();
   persist();
+  reloadMyModels();   // в списке слева обновится счётчик фото
 }
 
 // Своё фото под выбранный слот: файл копируется в папку модели, чтобы
@@ -510,6 +446,7 @@ function syncFormFromData() {
   $('f-batt-value').value = data.battery?.value || '';
   $('f-accent').value = data.accent || ORANGE;
   $('f-tintbg').checked = !!data.tintBg;
+  $('f-tintlogo').checked = !!data.tintLogo;
   $('f-removebg').checked = !!data.removeBg;
   buildBackgrounds();
   $('f-corners').checked = !!data.corners;
@@ -778,7 +715,7 @@ function currentBackground(name = data.background) {
 // Диапазон оттенков шире, чем у фона: у логотипа акцент чисто красный,
 // в узкий оранжевый коридор он не попадает.
 function currentLogo() {
-  if (!logo || !data.tintBg) return logo;
+  if (!logo || !data.tintLogo) return logo;
   const key = `logo|${data.accent}`;
   if (tintedLogo.key === key) return tintedLogo.canvas;
   tintedLogo = { key, canvas: recolorAccent(logo, data.accent, { fromDeg: -18, toDeg: 50, minSat: 0.25 }) };
@@ -799,10 +736,19 @@ function redraw() {
 }
 
 // ── Папка с фото ─────────────────────────────────────────────────────────────
-async function openFolder() {
-  const dir = await window.api.chooseFolder();
-  if (!dir) return;
-  await loadFolder(dir);
+async function importPhotos() {
+  if (!folder) { toast('Сначала выбери модель слева', 'err'); return; }
+
+  const res = await window.api.importPhotos(folder);
+  if (!res) return;
+  if (res.same) { toast('Это и есть папка модели — фото уже здесь', 'ok'); return; }
+  if (!res.added) { toast('В той папке не нашлось картинок', 'err'); return; }
+
+  busy(true, 'Переношу фото…');
+  await loadFolder(folder);          // перечитываем папку модели вместе с новыми файлами
+  await reloadMyModels();            // и обновляем счётчик фото в списке
+  busy(false);
+  toast(`Добавлено фото: ${res.added}`, 'ok');
 }
 
 async function loadFolder(dir) {
@@ -959,6 +905,11 @@ $('f-background2').addEventListener('change', (e) => {
   persist();
 });
 
+$('f-tintlogo').addEventListener('change', (e) => {
+  data.tintLogo = e.target.checked;
+  scheduleRedraw();
+});
+
 $('f-tintbg').addEventListener('change', (e) => {
   data.tintBg = e.target.checked;
   scheduleRedraw();
@@ -1006,22 +957,13 @@ $('f-tol').addEventListener('change', async () => {
   scheduleRedraw();
 });
 
-$('btn-folder').onclick = openFolder;
+$('btn-folder').onclick = importPhotos;
 $('btn-batch').onclick = batch;
 $('btn-add-photo').onclick = addPhotoToSlot;
 $('btn-new-model').onclick = newModel;
 $('btn-dup-model').onclick = duplicateModel;
 $('btn-del-model').onclick = deleteModel;
 $('btn-save').onclick = () => saveCards();
-
-async function loadCatalogFile() {
-  const res = await window.api.chooseCatalog();
-  if (!res) return;
-  if (applyCatalogText(res.text, res.path)) {
-    showDrawer(true);
-    toast(`Каталог загружен: ${catalog.length} ${modelsWord(catalog.length)}`, 'ok');
-  }
-}
 
 // Добавление своих подложек из меню: копируем файлы в папку «фоны» и сразу
 // показываем последний добавленный — иначе непонятно, сработало ли.
@@ -1040,15 +982,13 @@ async function addBackgroundFiles() {
   toast(`Добавлено фонов: ${res.added.length}`, 'ok');
 }
 
-$('btn-catalog').onclick = loadCatalogFile;
-$('catalog-search').addEventListener('input', buildCatalog);
+$('catalog-search').addEventListener('input', buildMyModels);
 
 $('btn-menu').onclick = () => showDrawer(!drawerOpen());
 $('drawer-close').onclick = () => showDrawer(false);
 
 // Пункты верхнего меню дублируют кнопки — обработчики те же самые.
 window.api.onMenu((action) => {
-  if (action === 'catalog') loadCatalogFile();
   if (action === 'add-background') addBackgroundFiles();
   if (action === 'open-icons') {
     window.api.openIcons();
@@ -1058,7 +998,7 @@ window.api.onMenu((action) => {
   if (action === 'open-backgrounds') window.api.openBackgrounds();
   if (action === 'open-library') window.api.openLibrary();
   if (action === 'new-model') newModel();
-  if (action === 'folder') openFolder();
+  if (action === 'folder') importPhotos();
   if (action === 'batch') batch();
   if (action === 'drawer') showDrawer(!drawerOpen());
   if (action === 'save' && !$('btn-save').disabled) saveCards();
@@ -1087,11 +1027,22 @@ window.api.onMenu((action) => {
   redraw();
   drawEditor();
 
-  // Каталог с прошлого запуска подхватываем молча: если его нет — просто
-  // останется приглашение загрузить файл.
   await reloadMyModels();   // библиотека своих моделей
 
-  const saved = await window.api.loadCatalog();
-  if (saved) applyCatalogText(saved.text, saved.path);
-  else buildCatalog();
+  // Работа должна сохраняться всегда, а сохранять её некуда, пока не выбрана
+  // модель. Поэтому программа сама открывает ту, с которой работали в прошлый
+  // раз, а при первом запуске заводит «Черновик» — человеку не надо помнить,
+  // что сперва нужно нажать «Новая».
+  const last = await window.api.lastModel();
+  const target = myModels.find(m => m.path === last) || myModels[0]?.path;
+  if (target) {
+    const m = myModels.find(x => x.path === target);
+    await openMyModel(m);
+  } else {
+    const draft = await window.api.createModel('Черновик');
+    if (draft) {
+      await reloadMyModels();
+      await openMyModel({ name: draft.name, path: draft.path });
+    }
+  }
 })();

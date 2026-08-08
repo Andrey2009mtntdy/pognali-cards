@@ -17,7 +17,7 @@
     <span id="current-model" class="chip hidden"></span>
   </div>
   <div class="top-actions">
-    <button id="btn-folder" class="btn btn-primary">Выбрать папку с фото</button>
+    <button id="btn-folder" class="btn btn-primary">Добавить фото из папки</button>
     <button id="btn-batch" class="btn">Пакет: все папки</button>
     <button id="btn-save" class="btn btn-accent" disabled>Сохранить карточки</button>
   </div>
@@ -39,14 +39,10 @@
       <button id="btn-dup-model" class="btn btn-mini" disabled>Дублировать</button>
       <button id="btn-del-model" class="btn btn-mini" disabled>Удалить</button>
     </div>
-    <div id="my-models" class="catalog-list lib-list"></div>
-
-    <div class="drawer-sep">Каталог из файла</div>
     <input id="catalog-search" placeholder="поиск по названию">
-    <div id="catalog-list" class="catalog-list"></div>
+    <div id="my-models" class="catalog-list lib-list"></div>
     <div class="drawer-foot">
-      <button id="btn-catalog" class="btn btn-mini">Загрузить каталог…</button>
-      <span id="catalog-name" class="hint">каталог не загружен</span>
+      <span class="hint">Всё сохраняется само в папку модели</span>
     </div>
   </aside>
 
@@ -71,7 +67,8 @@
       </div>
       <div class="row">
         <label class="color">Акцент<input type="color" id="f-accent" value="#F26522"></label>
-        <label class="check"><input type="checkbox" id="f-tintbg" checked> Красить полосы фона акцентом</label>
+        <label class="check"><input type="checkbox" id="f-tintbg" checked> Красить полосы фона</label>
+        <label class="check"><input type="checkbox" id="f-tintlogo" checked> Красить лого</label>
         <label class="check"><input type="checkbox" id="f-removebg" checked> Убирать фон у фото</label>
         <label class="check"><input type="checkbox" id="f-dark"> Тёмный фон</label>
         <label class="check"><input type="checkbox" id="f-corners"> Уголки в рамке</label>

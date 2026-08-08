@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld('api', {
   addBackground:    ()            => ipcRenderer.invoke('add-background'),
   openBackgrounds:  ()            => ipcRenderer.invoke('open-backgrounds-folder'),
   chooseCatalog:    ()            => ipcRenderer.invoke('choose-catalog'),
-  loadCatalog:      ()            => ipcRenderer.invoke('load-catalog'),
+  importPhotos:     (dir)         => ipcRenderer.invoke('import-photos', dir),
+  lastModel:        ()            => ipcRenderer.invoke('last-model'),
+  rememberModel:    (dir)         => ipcRenderer.invoke('remember-model', dir),
   addPhoto:         (dir)         => ipcRenderer.invoke('add-photo', dir),
 
   // Библиотека моделей: каждая модель — своя папка с фото и настройками.

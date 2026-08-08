@@ -164,6 +164,7 @@ export function parseData(text) {
   if ('фон' in fields) out.background = fields['фон'];
   if ('фон 2' in fields) out.background2 = fields['фон 2'];
   if ('красить фон' in fields) out.tintBg = /^(да|yes|1|true)$/i.test(fields['красить фон']);
+  if ('красить лого' in fields) out.tintLogo = /^(да|yes|1|true)$/i.test(fields['красить лого']);
 
   // Какой файл за каким слотом закреплён: «Фото front: перед.jpg». Нужно,
   // чтобы ручная расстановка пережила закрытие программы.
@@ -187,6 +188,7 @@ export function stringifyData(d) {
     `Фон: ${d.background || ''}`,
     `Фон 2: ${d.background2 || ''}`,
     `Красить фон: ${d.tintBg ? 'да' : 'нет'}`,
+    `Красить лого: ${d.tintLogo === false ? 'нет' : 'да'}`,
     `Тёмная тема: ${d.theme === 'dark' ? 'да' : 'нет'}`,
     `Удалять фон: ${d.removeBg ? 'да' : 'нет'}`,
     `Логотип на второй: ${d.logoOnSecond ? 'да' : 'нет'}`,
@@ -264,6 +266,7 @@ export function emptyData() {
     brand: '', model: '', version: '',
     accent: ORANGE, theme: 'light', removeBg: true, logoOnSecond: true, corners: false, tolerance: 38,
     background: 'горы.png', tintBg: true,   // комплектная подложка — имя вместе с расширением
+    tintLogo: true,                     // «РФ» и полоски логотипа под цвет карточки
     background2: '',                    // пусто = вторая карточка берёт фон первой
     divider: false,                     // полоса между названием и заголовком 2-й карточки
     transforms: {},

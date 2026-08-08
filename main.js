@@ -40,7 +40,6 @@ function buildMenu() {
     {
       label: 'Файл',
       submenu: [
-        { label: 'Загрузить каталог моделей…', accelerator: 'CmdOrCtrl+O', click: () => tell('catalog') },
         { label: 'Новая модель…', accelerator: 'CmdOrCtrl+N', click: () => tell('new-model') },
         { label: 'Открыть папку с моделями', click: () => tell('open-library') },
         { type: 'separator' },
@@ -455,9 +454,9 @@ ipcMain.handle('open-backgrounds-folder', async () => {
   return dir;
 });
 
-// ── Каталог моделей ──────────────────────────────────────────────────────────
-// Один текстовый файл со всеми моделями: выбрал слева — все поля заполнились,
-// остаётся подставить фотографии. Путь запоминается между запусками.
+// ── Настройки программы ──────────────────────────────────────────────────────
+// Небольшой json рядом с данными: сейчас там только последняя открытая модель,
+// чтобы при следующем запуске продолжить с того же места.
 
 const settingsFile = () => path.join(app.getPath('userData'), 'настройки.json');
 
@@ -469,49 +468,37 @@ async function writeSettings(next) {
   try { await fs.writeFile(settingsFile(), JSON.stringify(next, null, 2), 'utf8'); } catch { /* не критично */ }
 }
 
-ipcMain.handle('choose-catalog', async () => {
+// Фотографии из чужой папки переносим внутрь модели. Раньше программа просто
+// «переключалась» на ту папку, и работа уходила мимо библиотеки: модель
+// оставалась пустой, а рядом с чужими фото появлялся ещё один данные.txt.
+ipcMain.handle('import-photos', async (_e, targetDir) => {
+  if (!targetDir) return null;
   const res = await dialog.showOpenDialog(win, {
-    title: 'Выбери файл каталога моделей',
-    properties: ['openFile'],
-    filters: [{ name: 'Каталог', extensions: ['txt'] }],
+    title: 'Папка с фотографиями этой модели',
+    properties: ['openDirectory'],
   });
   if (res.canceled || !res.filePaths.length) return null;
 
-  const file = res.filePaths[0];
-  const text = await fs.readFile(file, 'utf8');
-  await writeSettings({ ...(await readSettings()), catalog: file });
-  return { path: file, text };
+  const src = res.filePaths[0];
+  if (path.resolve(src) === path.resolve(targetDir)) return { added: 0, same: true };
+
+  const entries = await fs.readdir(src, { withFileTypes: true });
+  let added = 0;
+  for (const e of entries) {
+    if (!e.isFile() || !IMAGE_EXT.has(path.extname(e.name).toLowerCase())) continue;
+    const ext = path.extname(e.name);
+    const base = path.basename(e.name, ext);
+    let target = path.join(targetDir, e.name);
+    for (let n = 2; await exists(target); n++) target = path.join(targetDir, base + ` (` + n + `)` + ext);
+    await fs.copyFile(path.join(src, e.name), target);
+    added++;
+  }
+  return { added, from: src };
 });
 
-// Каталог с прошлого запуска либо файл «каталог.txt» рядом с программой.
-// PORTABLE_EXECUTABLE_DIR — папка, откуда пользователь запустил portable-exe;
-// сам __dirname у portable-сборки указывает во временную распаковку, там искать
-// нечего.
-ipcMain.handle('load-catalog', async () => {
-  const saved = (await readSettings()).catalog;
-  const places = [
-    saved,
-    path.join(userDir(), 'каталог.txt'),
-    path.join(app.getPath('userData'), 'каталог.txt'),
-    path.join(path.dirname(app.getPath('exe')), 'каталог.txt'),
-    path.join(process.cwd(), 'каталог.txt'),
-    path.join(__dirname, 'модели', 'каталог.txt'),
-  ].filter(Boolean);
+ipcMain.handle('last-model', async () => (await readSettings()).lastModel || null);
 
-  for (const file of places) {
-    try { return { path: file, text: await fs.readFile(file, 'utf8') }; } catch { /* пробуем следующее */ }
-  }
-
-  // Ничего не нашлось — раскладываем образец в пользовательскую папку.
-  // Тот, что внутри сборки, читается, но не правится: на macOS он лежит
-  // внутри .app, а у portable-exe — во временной распаковке.
-  try {
-    const sample = await fs.readFile(path.join(__dirname, 'модели', 'каталог.txt'), 'utf8');
-    const target = path.join(userDir(), 'каталог.txt');
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(target, sample, 'utf8');
-    return { path: target, text: sample };
-  } catch {
-    return null;
-  }
+ipcMain.handle('remember-model', async (_e, dir) => {
+  await writeSettings({ ...(await readSettings()), lastModel: dir });
+  return true;
 });
